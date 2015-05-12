@@ -24,6 +24,6 @@ module.exports = function(codepoints, options) {
         ]
       }
     }))
-    .pipe(rename(config.sassOutputName))
-    .pipe(gulp.dest(config.sassDest));
+    .pipe(rename(config.stylesOutputName))
+    .pipe(gulp.dest(config.stylesDest));
 };

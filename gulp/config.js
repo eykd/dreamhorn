@@ -8,8 +8,8 @@ module.exports = {
       baseDir: dest
     }
   },
-  sass: {
-    src: src + "/sass/**/*.{sass,scss}",
+  styles: {
+    src: src + "/styles/**/*.{sass,scss}",
     dest: dest,
     settings: {
       imagePath: 'images' // Used by the image-url helper
@@ -27,9 +27,9 @@ module.exports = {
     name: 'Gulp Starter Icons',
     src: src + '/icons/*.svg',
     dest: dest + '/fonts',
-    sassDest: src + '/sass',
+    stylesDest: src + '/styles',
     template: './gulp/tasks/iconFont/template.scss.swig',
-    sassOutputName: '_icons.scss',
+    stylesOutputName: '_icons.scss',
     fontPath: 'fonts',
     className: 'icon',
     options: {
