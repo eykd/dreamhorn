@@ -28,8 +28,8 @@ module.exports = {
     src: src + '/icons/*.svg',
     dest: dest + '/fonts',
     sassDest: src + '/sass',
-    template: './gulp/tasks/iconFont/template.sass.swig',
-    sassOutputName: '_icons.sass',
+    template: './gulp/tasks/iconFont/template.scss.swig',
+    sassOutputName: '_icons.scss',
     fontPath: 'fonts',
     className: 'icon',
     options: {
