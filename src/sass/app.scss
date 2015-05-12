@@ -1,12 +1,13 @@
-@import scss-mixins
-@import typography
-@import icons
+@import "icons";
 
-.social-icons
-  h4
+.social-icons {
+  h4 {
     display: inline-block
     margin: 20px 10px 0 0
+  }
 
-  .icon
+  .icon {
     display: inline-block
     margin: 0 5px
+  }
+}

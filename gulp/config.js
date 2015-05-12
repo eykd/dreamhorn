@@ -43,9 +43,9 @@ module.exports = {
     // A separate bundle will be generated for each
     // bundle config in the list below
     bundleConfigs: [{
-      entries: src + '/javascript/global.coffee',
+      entries: src + '/javascript/main.coffee',
       dest: dest,
-      outputName: 'global.js',
+      outputName: 'main.js',
       // Additional file extentions to make optional
       extensions: ['.coffee', '.hbs'],
       // list of modules to make require-able externally
@@ -53,9 +53,10 @@ module.exports = {
       // See https://github.com/greypants/gulp-starter/issues/87 for note about
       // why this is 'backbone/node_modules/underscore' and not 'underscore'
     }, {
-      entries: src + '/javascript/page.js',
+      entries: src + '/javascript/game.coffee',
       dest: dest,
-      outputName: 'page.js',
+      outputName: 'game.js',
+      extensions: ['.coffee', '.hbs'],
       // list of externally available modules to exclude from the bundle
       external: ['jquery', 'underscore']
     }]

@@ -1,10 +1,10 @@
 {
-  "name": "gulp-starter",
+  "name": "dreamhorn",
   "version": "0.1.1",
-  "description": "Gulp starter with common tasks and scenarios",
+  "description": "Interactive thingamajigger.",
   "repository": {
     "type": "git",
-    "url": "git://github.com/greypants/gulp-starter.git"
+    "url": "git://github.com/eykd/dreamhorn.git"
   },
   "//": [
     "The following 'underscore' example demonstrates exposing a module included ",
