@@ -42,7 +42,7 @@ module.exports = {
     // A separate bundle will be generated for each
     // bundle config in the list below
     bundleConfigs: [{
-      entries: src + '/javascript/main.coffee',
+      entries: src + '/scripts/main.coffee',
       dest: dest,
       outputName: 'main.js',
       // Additional file extentions to make optional
@@ -52,7 +52,7 @@ module.exports = {
       // See https://github.com/greypants/gulp-starter/issues/87 for note about
       // why this is 'backbone/node_modules/underscore' and not 'underscore'
     }, {
-      entries: src + '/javascript/game.coffee',
+      entries: src + '/scripts/game.coffee',
       dest: dest,
       outputName: 'game.js',
       extensions: ['.coffee', '.hbs'],
