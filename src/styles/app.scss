@@ -1,12 +1,7 @@
+@import "variables";
 @import "bootstrap";
-.social-icons {
-  h4 {
-    display: inline-block;
-    margin: 20px 10px 0 0;
-  }
+@import "bootswatch";
 
-  .icon {
-    display: inline-block;
-    margin: 0 5px;
-  }
+.situation {
+  max-width: 35em;
 }
