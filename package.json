@@ -17,8 +17,10 @@
     "and available to browserify-shim as 'plugin' on line 30."
   ],
   "browser": {
-    "underscore": "backbone/node_modules/underscore",
-    "plugin": "./src/javascript/vendor/jquery-plugin.js"
+    "backbone": "./src/scripts/vendor/backbone.js",
+    "lodash": "./src/scripts/vendor/lodash.js",
+    "modernizr": "./src/scripts/vendor/modernizr.js",
+    "underscore": "./src/scripts/vendor/lodash.js"
   },
   "browserify": {
     "transform": [
@@ -71,7 +73,7 @@
     "watchify": "^2.4.0"
   },
   "dependencies": {
-    "backbone": "~1.1.2",
-    "jquery": "~2.1.0"
+    "jquery": "~2.1.0",
+    "markdown-it": "^4.2.1"
   }
 }
