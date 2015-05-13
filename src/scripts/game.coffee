@@ -1,20 +1,30 @@
-# Browserify entry point for the page.js bundle (yay JavaScript!)
+'use strict';
 
 $ = require('jquery')
-_ = require('underscore')
-# global.js already contains jQuery, so in our config.js file, we
-# are exposing it to other files like this one in the `require` array.
-# Also in config.js, jquery is listed in `external` array for this bundle.
-# This combination lets this file use the jquery module bundled with
-# global.js, instead of including it twice!
+dreamhorn = require('./dreamhorn')
 
-messageTemplate = _.template "<p class='love-letter'>Made with <%= feels %> at <a href='<%= url %>'><%= bestCompanyEvar %>!</a></p>"
+dreamhorn.dispatcher.on "hide:begin-button", ($el) ->
+  $el.slideUp()
 
-message = messageTemplate
-  bestCompanyEvar: 'Viget'
-  feels: '♥'
-  url: 'http:#viget.com'
 
-$('body').append(message)
+dreamhorn.dispatcher.on "show:situation", ($el) ->
+  $el.slideDown()
+  $('html, body').animate({
+      scrollTop: $el.offset().top
+  }, 2000);
 
-console.log 'game.coffee loaded!'
+
+
+dreamhorn.situation 'begin',
+  content: """
+
+  Hurrying through the rainswept November night, you're glad to see the bright
+  lights of the Opera House. It's surprising that there aren't more people
+  about but, hey, what do you expect in a cheap demo game...?
+
+  """
+
+
+console.log "game.coffee loaded!"
+
+
