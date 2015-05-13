@@ -74,6 +74,7 @@
   },
   "dependencies": {
     "jquery": "~2.1.0",
-    "markdown-it": "^4.2.1"
+    "markdown-it": "^4.2.1",
+    "velocity-animate": "^1.2.2"
   }
 }

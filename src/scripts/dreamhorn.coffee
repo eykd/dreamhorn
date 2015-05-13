@@ -70,7 +70,9 @@ A Situation corresponds to a presentation of text and a choice.
 
 ###
 class Situation extends Model
-  initialize: ->
+  initialize: (attributes, options) ->
+    super attributes, options
+    @template = _.template @get 'content'
 
 
 ###
@@ -184,8 +186,6 @@ class BeginButtonView extends View
   on_begin: =>
     @dispatcher.trigger 'begin'
     @dispatcher.trigger 'hide:begin-button', @$el
-    if !@$el.is(':animated')
-      @$el.hide()
 
 
 ###
@@ -201,19 +201,30 @@ class SituationsView extends View
     super options
     this.situations = {}
     this.collection.on 'add', this.on_add_situation
+    this.collection.on 'remove', this.on_remove_situation
 
   on_add_situation: (model) =>
-    console.log "Adding new situation view:", model, @el, this
-    situation = new SituationView
+    situation = new SituationView @options.get_options
       model: model
 
+    before = model.get('before')
+    if _.isFunction before
+      before situation.options
     @situations[model.cid] = situation
     situation.render()
     situation.$el.hide()
     @$el.append situation.el
     @dispatcher.trigger "show:situation", situation.$el
-    if !situation.$el.is(':animated')
+    if not situation.$el.is(':animated')
       situation.$el.show()
+    after = model.get('after')
+    if _.isFunction after
+      after situation.options
+
+  on_remove_situation: (model) =>
+    situation = @situations[model.cid]
+    situation.unlink()
+    @dispatcher.trigger "hide:situation", situation.$el
 
 ###
 
@@ -227,12 +238,43 @@ class SituationView extends View
   tagName: "section"
   className: "situation center-block"
 
+  events:
+    "click a": "on_click"
+
   render: ->
-    content = this.model.get 'content'
+    context = _.extend {}, @options.get_options(), @model.toJSON()
+    content = this.model.template context
 
     this.$el.html markdown.render content
 
+  unlink: ->
+    this.$('a').not('.sticky').contents().unwrap()
 
+  on_click: (evt) =>
+    $a = $ evt.target
+
+    if not $a.hasClass 'raw'
+      evt.preventDefault()
+      [event, arg] = @parse_directive $a.text(), $a.attr('href')
+      @dispatcher.trigger event, arg
+
+  parse_directive: (text, directive) ->
+    event = null
+    arg = undefined
+    if directive == '!'
+      # !: Trigger an event of the same name as anchor text
+      event = text
+    else if '!' in directive
+      if _.startsWith directive, '!'
+        # !event: Trigger the event named
+        event = _.trimLeft directive, '!'
+      else
+        # action!arg: Call the action with the given argument
+        [event, arg] = directive.split '!', 2
+    else
+      event = directive
+
+    return [event, arg]
 ###
 
 The Root View
@@ -276,14 +318,14 @@ class Dreamhorn
     @dispatcher.on "all", () =>
       console.log "Action dispatched:", arguments
 
-    @stack.on "all", () =>
-      console.log "Stack:", arguments
-
     @dispatcher.on "begin", () =>
-      console.log "Beginning!"
       begin_id = @options.begin_situation || 'begin'
       begin = @situations.get begin_id
       @stack.push begin
+
+    @dispatcher.on "replace", (situation_id) =>
+      @stack.pop()
+      @stack.push @situations.get situation_id
 
   get_options: (suboptions) ->
     options =

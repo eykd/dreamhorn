@@ -1,6 +1,7 @@
 # Browserify entry point for the global.js bundle (yay CoffeeScript!)
-$ = require('jquery')
-dreamhorn = require('./dreamhorn')
+$ = window.$ = window.jQuery = require('jquery')
+require('velocity-animate')
+dreamhorn = window.dreamhorn = require('./dreamhorn')
 require('./game')
 $ ->
   dreamhorn.init $('#main')

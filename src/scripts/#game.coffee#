@@ -4,17 +4,22 @@ $ = require('jquery')
 dreamhorn = require('./dreamhorn')
 
 
-DURATION = 1500
-
 dreamhorn.dispatcher.on "hide:begin-button", ($el) ->
-  $el.velocity('slideUp', {duration: DURATION})
+  # $el.slideUp()
+  $el.velocity("slideUp", {duration: 500})
+
 
 dreamhorn.dispatcher.on "show:situation", ($el) ->
-  $el.velocity('slideDown', {duration: DURATION})
-     .velocity('scroll', {duration: DURATION})
+  # $el.slideDown()
+  # $('html, body').animate({
+  #     scrollTop: $el.offset().top
+  # }, 500);
+  $el.velocity('slideDown', {duration: 500})
+  $el.velocity('scroll', {dura})
 
 dreamhorn.dispatcher.on "hide:situation", ($el) ->
-  $el.velocity('slideUp', {duration: DURATION})
+  # $el.slideUp()
+  $el.velocity("slideUp", {duration: 500})
 
 
 
