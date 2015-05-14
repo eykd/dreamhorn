@@ -1,11 +1,11 @@
 'use strict';
 
 $ = require('jquery')
-dreamhorn = require('./dreamhorn')
+D = require('./dreamhorn')
 require('./effects')
 
-dreamhorn.situation 'begin',
-  before: (options) ->
+D.situation 'begin',
+  before_enter: (options) ->
     options.world.set 'wearing cloak', true
 
   content: """
@@ -18,7 +18,7 @@ dreamhorn.situation 'begin',
 
   """
 
-dreamhorn.situation 'rooms:outside',
+D.situation 'rooms:outside',
   content: """
 
   You've only just arrived, and besides, the weather outside seems to be
@@ -26,7 +26,7 @@ dreamhorn.situation 'rooms:outside',
 
   """
 
-dreamhorn.situation 'rooms:foyer',
+D.situation 'rooms:foyer',
   content: """
 
   ## Foyer of the Opera House
@@ -38,7 +38,7 @@ dreamhorn.situation 'rooms:foyer',
 
   """
 
-dreamhorn.situation 'rooms:cloakroom',
+D.situation 'rooms:cloakroom',
   content: """
 
   ## Cloakroom
@@ -50,7 +50,7 @@ dreamhorn.situation 'rooms:cloakroom',
 
   """
 
-dreamhorn.situation 'rooms:bar',
+D.situation 'rooms:bar',
   content: """
 
   <% if (world.get('wearing cloak')) { %>
@@ -69,5 +69,86 @@ dreamhorn.situation 'rooms:bar',
   sort of [message](!) scrawled in the sawdust on the floor.
 
   <% } %>
+
+  """
+  actions:
+    'back out slowly': ->
+      D.replace 'rooms:foyer'
+
+    'fumble around for a light': ->
+      D.push 'actions:fumble around'
+
+    'message': ->
+      D.push 'items:message'
+
+
+D.situation 'actions:fumble around',
+  content: """
+
+You fumble around in the dark, but to no avail.
+
+[Continue...](pop!)
+
+  """
+  before_enter: ->
+    D.world.set('fumbled', true)
+
+
+D.situation 'items:hook',
+  content: """
+
+  ## The hook
+
+  It's just a small brass hook, screwed to the wall.
+  <% if (world.get('wearing cloak')) { %>
+  Useful for [hanging things](!) on it.
+  <% } else { %>
+  Your [opera cloak](!) is hanging on it.
+  <% } %>
+
+  [Continue...](pop!)
+  """
+  actions:
+    "hanging things": ->
+      D.world.set('wearing cloak', false)
+      return "You hang the velvet cloak on the hook."
+
+    "opera cloak": ->
+      return "You take the velvet cloak off the hook and put it on."
+
+
+D.situation 'items:message',
+  content: """
+
+  <% if (world.get('fumbled')) { %>
+  ## A message?
+
+  There appears to have been a message marked here in the sawdust, but someone
+  must have blundered through it in the dark. As best as you can tell, it reads...
+
+  **You have lost**
+
+  <% } else { %>
+  ## The message
+
+  The message, neatly marked in the sawdust, reads...
+
+  **You have won**
+
+  <% } %>
+
+  [Start over.](reset!)
+
+  """
+
+
+D.situation 'actions:hang up cloak',
+  content: """
+
+  You put the velvet cloak on the small brass hook.
+
+  {{ this.set("wearing cloak", False) }}
+
+  [Continue...](pop!)
 
   """

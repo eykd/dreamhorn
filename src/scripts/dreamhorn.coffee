@@ -148,7 +148,9 @@ class TitleView extends View
 
   initialize: (options) ->
     super options
-    @button_view = new BeginButtonView options.get_options()
+    @reset()
+    @dispatcher.on 'reset', @reset
+    @dispatcher.on 'begin', @begin
 
   render: ->
     @button_view.render()
@@ -158,7 +160,13 @@ class TitleView extends View
     @$el.append button
     button.fadeIn()
 
+  begin: =>
+    @$el.removeClass('jumbotron').addClass('page-header')
 
+  reset: =>
+    @$el.removeClass('page-header').addClass('jumbotron')
+    @button_view = new BeginButtonView @options.get_options()
+    @render()
 
 ###
 
@@ -174,7 +182,6 @@ class BeginButtonView extends View
 
   initialize: (options) ->
     super options
-    @dispatcher.on 'hide:begin-button', =>
 
   events:
     "click": "on_begin"
@@ -185,7 +192,9 @@ class BeginButtonView extends View
 
   on_begin: =>
     @dispatcher.trigger 'begin'
-    @dispatcher.trigger 'hide:begin-button', @$el
+    duration = @options.show_animation_duration || 500
+    @dispatcher.trigger 'remove:begin-button', @$el, duration
+    _.delay((() => @$el.remove()), duration)
 
 
 ###
@@ -199,32 +208,103 @@ The Situations View handles adding new Situations to the current state.
 class SituationsView extends View
   initialize: (options) ->
     super options
-    this.situations = {}
-    this.collection.on 'add', this.on_add_situation
-    this.collection.on 'remove', this.on_remove_situation
+    @situations = {}
+    @collection.on 'push', this.on_push
+    @collection.on 'pop', this.on_pop
+    @collection.on 'replace', this.on_replace
+    @dispatcher.on 'reset', this.on_reset
 
-  on_add_situation: (model) =>
-    situation = new SituationView @options.get_options
-      model: model
+  unlink_all_but_last: ->
+    _.forEach @collection.slice(0, @situations.length), (model) =>
+      situation = @get_situation_from_model model
+      situation.unlink()
 
-    before = model.get('before')
+  unlink_all: ->
+    @collection.forEach (model) =>
+      situation = @get_situation_from_model model
+      situation.unlink()
+
+  relink_latest: ->
+    model = @collection.last()
+    situation = @get_situation_from_model model
+    situation.relink()
+
+  get_situation_from_model: (model) ->
+    if not @situations[model.cid]
+      situation = new SituationView @options.get_options
+        model: model
+      @situations[model.cid] = situation
+
+    return @situations[model.cid]
+
+  run_before_entering: (situation) ->
+    model = situation.model
+    before = model.get('before_enter')
     if _.isFunction before
       before situation.options
-    @situations[model.cid] = situation
-    situation.render()
-    situation.$el.hide()
-    @$el.append situation.el
-    @dispatcher.trigger "show:situation", situation.$el
-    if not situation.$el.is(':animated')
-      situation.$el.show()
-    after = model.get('after')
+
+  run_after_entering: (situation) ->
+    model = situation.model
+    after = model.get('after_enter')
     if _.isFunction after
       after situation.options
 
-  on_remove_situation: (model) =>
-    situation = @situations[model.cid]
-    situation.unlink()
-    @dispatcher.trigger "hide:situation", situation.$el
+  run_before_exiting: (situation) ->
+    model = situation.model
+    before = model.get('before_exit')
+    if _.isFunction before
+      before situation.options
+
+  run_after_exiting: (situation) ->
+    model = situation.model
+    after = model.get('after_exit')
+    if _.isFunction after
+      after situation.options
+
+  show_situation: (situation) ->
+    duration = @options.show_animation_duration || 500
+    @dispatcher.trigger "show:situation", situation.$el, duration
+    _.delay((() -> situation.$el.show()), duration)
+
+  remove_situation: (situation) ->
+    duration = @options.remove_animation_duration || 500
+    @dispatcher.trigger "remove:situation", situation.$el, duration
+    _.delay((() -> situation.$el.remove()), duration)
+
+  push: (model) =>
+    @unlink_all()
+    situation = @get_situation_from_model model
+    @run_before_entering situation
+    situation.render()
+    situation.$el.hide()
+    @$el.append situation.el
+    @show_situation situation
+    @run_after_entering situation
+
+  pop: (model, relink=true) =>
+    situation = @get_situation_from_model model
+    @run_before_exiting situation
+    @remove_situation situation
+    @run_after_exiting situation
+    delete @situations[model.cid]
+    if relink
+      @relink_latest()
+
+  on_push: (model) =>
+    @push model
+
+  on_replace: (popped, pushed) =>
+    @pop popped, relink=false
+    @push pushed
+
+  on_pop: (model) =>
+    @pop model
+
+  on_reset: () =>
+    for cid, situation of @situations
+      situation.remove()
+    @situations = {}
+
 
 ###
 
@@ -241,22 +321,57 @@ class SituationView extends View
   events:
     "click a": "on_click"
 
-  render: ->
+  render_template: (template) ->
     context = _.extend {}, @options.get_options(), @model.toJSON()
-    content = this.model.template context
+    result = template context
+    html = markdown.render result
+    return $ html
 
-    this.$el.html markdown.render content
+  render: ->
+    rendered = @render_template @model.template
+
+    rendered.find('a').not('.raw').each (idx, el) ->
+      $el = $ el
+      href = $el.attr('href')
+      $el.data 'href', href
+      $el.attr('href', undefined)
+
+    @$el.html rendered
 
   unlink: ->
-    this.$('a').not('.sticky').contents().unwrap()
+    @$('a').not('.sticky').addClass('disabled')
+
+  relink: ->
+    @$('a.disabled').removeClass('disabled')
+
+  is_action: (event) ->
+    actions = @model.get('actions')
+    if actions
+      return event of actions
+    else
+      return false
+
+  handle_action: (event, $el) ->
+    actions = @model.get('actions')
+    action = actions[event]
+    result = action($el)
+    if _.isString result
+      template = _.template result
+      rendered = @render_template template
+      @$el.append rendered
 
   on_click: (evt) =>
     $a = $ evt.target
 
     if not $a.hasClass 'raw'
       evt.preventDefault()
-      [event, arg] = @parse_directive $a.text(), $a.attr('href')
-      @dispatcher.trigger event, arg
+      if not $a.hasClass 'disabled'
+        [event, arg] = @parse_directive $a.text(), $a.data('href')
+        if @is_action event
+          @handle_action event, $a
+          @dispatcher.trigger 'action', event, arg
+        else
+          @dispatcher.trigger event, arg
 
   parse_directive: (text, directive) ->
     event = null
@@ -274,6 +389,12 @@ class SituationView extends View
     else
       event = directive
 
+    if not arg
+      arg = text.toLowerCase()
+
+    event = event.toLowerCase()
+
+    console.log "Parsed directive", text, directive, 'as', event, arg
     return [event, arg]
 ###
 
@@ -282,9 +403,11 @@ The Root View
 
 ###
 
-class RootView extends Backbone.View
+class RootView extends View
   initialize: (options) ->
     super options
+    @dispatcher.on "reset", @reset
+
     @views =
       title: new TitleView options.get_options
         el: @$('.banner').get(0)
@@ -293,6 +416,10 @@ class RootView extends Backbone.View
         collection: options.stack
         el: @$('.situations').get(0)
 
+    @views.title.render()
+
+  reset: =>
+    @$el.velocity 'scroll', {duration: 500}
     @views.title.render()
 
 
@@ -320,12 +447,33 @@ class Dreamhorn
 
     @dispatcher.on "begin", () =>
       begin_id = @options.begin_situation || 'begin'
-      begin = @situations.get begin_id
-      @stack.push begin
+      @push begin_id
 
-    @dispatcher.on "replace", (situation_id) =>
-      @stack.pop()
-      @stack.push @situations.get situation_id
+    @dispatcher.on "replace", @replace
+
+    @dispatcher.on "push", @push
+
+    @dispatcher.on "pop", @pop
+
+  push: (situation_id) =>
+    situation = @situations.get situation_id
+    if not situation
+      throw new Error "No such situation #{situation_id}"
+    @stack.push situation
+    @stack.trigger 'push', situation
+    return situation
+
+  pop: (situation_id) =>
+    situation = @stack.pop()
+    @stack.trigger 'pop', situation
+    return situation
+
+  replace: (situation_id) =>
+    popped = @stack.pop()
+    situation = @situations.get situation_id
+    @stack.push situation
+    @stack.trigger 'replace', popped, situation
+    return [popped, situation]
 
   get_options: (suboptions) ->
     options =
@@ -334,7 +482,6 @@ class Dreamhorn
       world: @world
       items: @items
       dispatcher: @dispatcher
-      $root: @$el
       get_options: (suboptions) ->
         _.extend(
           {},
@@ -352,15 +499,25 @@ class Dreamhorn
 
     return _.extend {}, @options, options, suboptions
 
+  reset: =>
+    @stack.reset []
+    @world.reset []
+    @items.reset []
+
   situation: (id, data) ->
-    data.id = id
+    if not data
+      data = id
+      id = data.id
+    else
+      data.id = id.toLowerCase()
+    if not id
+      throw new Error("No ID provided with new situation!")
     @situations.add(data)
+    return @situations.get id
 
-  init: (el) ->
-    options = @get_options
-      el: el
-    @root = new RootView options
-
+  init: (options) ->
+    @options = _.extend {}, @options, options
+    @root = new RootView @get_options()
 
 
 module.exports = new Dreamhorn()
