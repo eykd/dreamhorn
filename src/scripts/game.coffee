@@ -22,7 +22,7 @@ D.situation 'rooms:outside',
   content: """
 
   You've only just arrived, and besides, the weather outside seems to be
-  getting worse. Best to [stay inside](replace!rooms:foyer)
+  getting worse. Best to [stay inside](pop!)
 
   """
 
@@ -33,7 +33,7 @@ D.situation 'rooms:foyer',
 
   You are standing in a spacious hall, splendidly decorated in red and gold,
   with glittering chandeliers overhead. The entrance from the street is to the
-  [north](replace!rooms:outside), and there are doorways [south](replace!rooms:bar) and
+  [north](push!rooms:outside), and there are doorways [south](replace!rooms:bar) and
   [west](replace!rooms:cloakroom).
 
   """

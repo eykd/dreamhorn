@@ -8,5 +8,3 @@ config = require('./config')
 $ ->
   config.el = $('#main').get(0)
   dreamhorn.init config
-
-console.log 'main.coffee loaded!'

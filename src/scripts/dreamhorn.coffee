@@ -192,7 +192,7 @@ class BeginButtonView extends View
 
   on_begin: =>
     @dispatcher.trigger 'begin'
-    duration = @options.show_animation_duration || 500
+    duration = @options.hide_animation_duration || 500
     @dispatcher.trigger 'remove:begin-button', @$el, duration
     _.delay((() => @$el.remove()), duration)
 
@@ -267,7 +267,7 @@ class SituationsView extends View
     _.delay((() -> situation.$el.show()), duration)
 
   remove_situation: (situation) ->
-    duration = @options.remove_animation_duration || 500
+    duration = @options.hide_animation_duration || 500
     @dispatcher.trigger "remove:situation", situation.$el, duration
     _.delay((() -> situation.$el.remove()), duration)
 
