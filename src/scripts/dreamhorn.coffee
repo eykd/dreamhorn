@@ -1,37 +1,71 @@
-###
-Dreamhorn
-=========
+# The Dreamhorn Library
+# =====================
+#
+# *In which we get down to brass tacks.*
+#
+# Dreamhorn is a platform for choice-based interactive fiction, inspired by Undum
+# and Raconteur. You can read more about it in the [Introduction](./index.html).
+#
+# [backbone]: <http://backbonejs.org/>
+# [coffee]: <http://coffeescript.org/>
+# [coffee-class]: <http://coffeescript.org/#classes>
+# [coffee-initialize]: <http://backbonejs.org/#Model-constructor>
+# [collections]: <http://backbonejs.org/#Collection>
+# [jquery]: <http://jquery.com/>
+# [lodash]: <https://lodash.com>
+# [markdown]: <http://daringfireball.net/projects/markdown/syntax>
+# [markdown-it]: <https://markdown-it.github.io/>
+# [models]: <http://backbonejs.org/#Model>
 
-Dreamhorn is a platform for choice-based interactive fiction, inspired by Undum
-and Raconteur.
-
-###
-
+# Preamble
+# --------
+#
+# Here we go then. You've already met [jQuery][jquery]:
+#
 $ = require('jquery')
-_ = require('underscore')
+
+# Next, we'll be needing [lodash][lodash], a utility library that's useful to
+# have on hand. It's also required by Backbone, which is coming up next.
+#
+_ = require('lodash')
+
+# Ah, [Backbone][backbone]. You'll be seeing a lot of it. As the name suggests,
+# Backbone will be providing the spine of the application to follow.
+#
 Backbone = require('backbone')
-markdown = require('markdown-it') 'default',
-  html: true
-  typographer: true
+
+# Our config library makes its reprise. We'll be needing it shortly.
+#
+config = require('./config')
+
+# And, of course, we'll be needing something to translate [Markdown][markdown]
+# into HTML. The [`markdown-it`][markdown-it] package will do very
+# nicely. We'll provide it with configuration from our `config` object.
+#
+markdown = require('markdown-it') 'default', config.markdown
 
 
-###
-
-Models & Collections
---------------------
-
-We'll use `Backbone.Model` for storing all story state. We'll use
-`Backbone.Collection` for storing collections of models.
-
-###
-
+# Models & Collections
+# --------------------
+#
+# We'll use [`Backbone.Model`][models] for storing all story state. We'll use
+# [`Backbone.Collection`][collections] for storing collections of models.
+#
+# Here, we make a custom `Model` to handle a custom `dispatcher` object that
+# we'll be passing around.
+#
 class Model extends Backbone.Model
+  # [Coffeescript classes][coffee-class] can define constructor
+  # methods that set up the instance. `constructor` is called before Backbone's
+  # [`initialize`][backbone-initialize].
+  #
   constructor: (data, options) ->
     @dispatcher = options.dispatcher if options
     super data, options
 
-
-
+# And again, we make a custom `Collection` to handle that custom `dispatcher`
+# object that we'll be passing around.
+#
 class Collection extends Backbone.Collection
   constructor: (models, options) ->
     @dispatcher = options.dispatcher if options
@@ -39,63 +73,57 @@ class Collection extends Backbone.Collection
 
 
 
-###
-
-World
------
-
-The World contains the state of the game world.
-
-###
+# World
+# -----
+#
+# `World` is a [model][models] that contains the state of the game world.
 class World extends Model
 
 
-###
+# Items
+# -----
+#
+# `Items` is a [collection][collections] that will contain the player
+# inventory.
+#
+ Items extends Collection
 
-Items
------
-
-The Items contains the state of the player inventory.
-
-###
-class Items extends Collection
-
-
-###
-
-Situation
----------
-
-A Situation corresponds to a presentation of text and a choice.
-
-###
+# Situation
+# ---------
+#
+# A Situation is a custom [model][models] that corresponds to a presentation of
+# text and choices. We'll explore this more deeply in our usage example, [The
+# Cloak of Darkness](./main.html).
+#
 class Situation extends Model
+  # Here we meet Backbone's [`initialize`][backbone-initialize] in the
+  # wild. Again, this gets called *after* the Model constructor defined above.
   initialize: (attributes, options) ->
     super attributes, options
     @template = _.template @get 'content'
 
 
-###
-
-Situations
-----------
-
-We'll use `Situations` collection for several purposes: one, a global registry
-of available situations; two, a stack of currently-active situations.
-
-###
+# Situations
+# ----------
+#
+# We'll use `Situations` [collection][collections] for several purposes: one, a global registry
+# of available situations; two, a stack of currently-active situations.
+#
 class Situations extends Collection
+  # By defining `model` here, [`Collection.add()`][collection-add] will
+  # rehydrate a plain old Javascript object into a fancy-pants [Backbone
+  # Model][models].
+  #
+  # [collection-add]: http://backbonejs.org/#Collection-add
   model: Situation
 
 
-###
 
-Qualitiy
---------
-
-FIXME:Still need to figure out how these will work!
-
-###
+# Quality
+# -------
+#
+# FIXME: Still need to figure out how these will work!
+#
 class Quality extends Backbone.Model
   initialize: ->
 
@@ -116,16 +144,16 @@ class Qualities extends Backbone.Collection
           q.update(value)
 
 
-###
 
-Views
------
+# Views
+# -----
 
-`Backbone.View` provides a way to render data to the page, and a way to handle
-events generated on the page.
-
-###
-
+# [`Backbone.View`][views] provides a way to render data to the page, and a way
+# to handle events generated on the page. Again, here we're just creating a
+# custom view that knows about our dispatcher.
+#
+# [views]: http://backbonejs.org/#View
+#
 class View extends Backbone.View
   initialize: (options) ->
     @options = options
@@ -133,25 +161,41 @@ class View extends Backbone.View
     super options
 
 
-###
 
-The Title View
---------------
-
-The Title View presents the title of the piece, and provides the entrypoint
-into the first Situation.
-
-###
+# The Title View
+# --------------
+#
+# Our first real do-something [view][views]. The Title View presents the title
+# of the piece, and provides the entrypoint into the first Situation, via the
+# Back Button View..
+#
 class TitleView extends View
+  # Backbone views automatically create an empty DOM element that we can insert
+  # into the page document later. Here, we control the properties of that
+  # element.
   tagName: "header"
   className: "title"
 
+  # Views have [`initialize`][backbone-initialize] methods as well. As usual,
+  # they will be called after the constructor.
   initialize: (options) ->
     super options
     @reset()
-    @dispatcher.on 'reset', @reset
-    @dispatcher.on 'begin', @begin
+    # Here we begin to see our dispatcher at work. The dispatcher is a simple
+    # [backbone.Events][backbone-events] object that we will use to coordinate
+    # actions across the application, allowing our application components to be
+    # [loosely coupled][loose-coupling].
+    #
+    # [backbone-events]: http://backbonejs.org/#Events
+    # [loose-coupling]: https://en.wikipedia.org/wiki/Loose_coupling
+    @dispatcher.on 'reset', @on_reset
+    @dispatcher.on 'begin', @on_begin
 
+  # Views can define a `render` method that should take care of the business of
+  # rendering this view's element, including adding any sub-views' elements to
+  # this view's element.
+  #
+  # Here we render our button sub-view and add its element to our own.
   render: ->
     @button_view.render()
     button = $ '<p></p>'
@@ -160,22 +204,41 @@ class TitleView extends View
     @$el.append button
     button.fadeIn()
 
-  begin: =>
-    @$el.removeClass('jumbotron').addClass('page-header')
+  # When the story begins, we may wish to reduce the size of the title
+  # "jumbotron", which is rather imposing, especially if we're not intending to
+  # scroll far down the page. To see how this might be handled, visit the
+  # [Effects][effects] appendix.
+  #
+  # [effects]: ./effects.html
+  begin: ->
+    @dispatcher.trigger "reduce:title", @$el
 
-  reset: =>
-    @$el.removeClass('page-header').addClass('jumbotron')
+  # When we reset the view (or set it up for the first time!) we'll need to
+  # instantiate a button view and restore the title "jumbotron" to its original size and state.
+  reset: ->
+    @dispatcher.trigger "expand:title", @$el
     @button_view = new BeginButtonView @options.get_options()
     @render()
 
-###
+  # Signal handlers attached to the `@dispatcher` above. We could use `begin`
+  # and `reset` directly as the signal handlers, but I prefer to separate the
+  # handler from the actual implementation, for naming purposes. Also, note the
+  # `=>`, which is [Coffeescript's way][fat-arrow] of ensuring that these methods remain
+  # bound to their object.
+  #
+  # [fat-arrow]: http://coffeescript.org/#fat-arrow
+  on_begin: =>
+    @begin()
 
-Begin Button View
------------------
+  on_reset: =>
+    @reset()
 
-The Begin button kicks off the beginning of the game.
 
-###
+# Begin Button View
+# -----------------
+#
+# The Begin button kicks off the beginning of the game when you click it.
+#
 class BeginButtonView extends View
   tagName: "button"
   className: "btn btn-lg btn-success btn-begin"
@@ -183,28 +246,34 @@ class BeginButtonView extends View
   initialize: (options) ->
     super options
 
+  # Views that handle DOM events can [define their event
+  # handlers][view-dom-event-handlers] by name here:
+  #
+  # [view-dom-event-handlers]: http://backbonejs.org/#View-delegateEvents
   events:
-    "click": "on_begin"
+    "click": "on_click"
 
   render: ->
     text = this.options.begin_text || '<em>Begin!</em>'
     this.$el.html text
 
-  on_begin: =>
-    @dispatcher.trigger 'begin'
-    duration = @options.hide_animation_duration || 500
-    @dispatcher.trigger 'remove:begin-button', @$el, duration
-    _.delay((() => @$el.remove()), duration)
+  # The handler for the DOM `click` event. Here we send, or `trigger` events on
+  # the dispatcher, rather than listening for them.
+  on_click: =>
+    # `begin` signifies that the story has started.
+    @dispatcher.trigger 'begin', @$el
+    # Once the button is clicked, we want to remove the button from play. A
+    # handler for this event should finish by removing the button from the DOM.
+    # To see how this might be handled, visit the [Effects][effects] appendix.
+    @dispatcher.trigger 'remove:begin-button', @$el
 
 
-###
 
-The Situations View
--------------------
+# The Situations View
+# -------------------
 
-The Situations View handles adding new Situations to the current state.
-
-###
+# The Situations View handles adding new Situations to the current state.
+#
 class SituationsView extends View
   initialize: (options) ->
     super options
@@ -263,13 +332,13 @@ class SituationsView extends View
 
   show_situation: (situation) ->
     duration = @options.show_animation_duration || 500
-    @dispatcher.trigger "show:situation", situation.$el, duration
+    trigger = @dispatcher.blackboard.get('last-trigger')
+    @dispatcher.trigger "show:situation", situation.$el, trigger, duration
     _.delay((() -> situation.$el.show()), duration)
 
   remove_situation: (situation) ->
-    duration = @options.hide_animation_duration || 500
-    @dispatcher.trigger "remove:situation", situation.$el, duration
-    _.delay((() -> situation.$el.remove()), duration)
+    trigger = @dispatcher.blackboard.get('last-trigger')
+    @dispatcher.trigger "remove:situation", situation.$el, trigger
 
   push: (model) =>
     @unlink_all()
@@ -306,14 +375,12 @@ class SituationsView extends View
     @situations = {}
 
 
-###
 
-Situation View
---------------
+# Situation View
+# --------------
 
-A Situation View handles a single Situation display.
+# A Situation View handles a single Situation display.
 
-###
 class SituationView extends View
   tagName: "section"
   className: "situation center-block"
@@ -362,6 +429,7 @@ class SituationView extends View
 
   on_click: (evt) =>
     $a = $ evt.target
+    @dispatcher.blackboard.set('last-trigger', $a)
 
     if not $a.hasClass 'raw'
       evt.preventDefault()
@@ -396,12 +464,10 @@ class SituationView extends View
 
     console.log "Parsed directive", text, directive, 'as', event, arg
     return [event, arg]
-###
 
-The Root View
--------------
+# The Root View
+# -------------
 
-###
 
 class RootView extends View
   initialize: (options) ->
@@ -423,18 +489,17 @@ class RootView extends View
     @views.title.render()
 
 
-###
 
-The Dreamhorn Object
---------------------
+# The Dreamhorn Object
+# --------------------
 
-The Dreamhorn object is entrypoint into the application.
+# The Dreamhorn object is entrypoint into the application.
 
-###
 class Dreamhorn
   constructor: (options) ->
     @options = options || {}
     @dispatcher = _.extend {}, Backbone.Events
+    @dispatcher.blackboard = new Backbone.Model()
     @root = null
 
     @situations = new Situations [], @get_options()
