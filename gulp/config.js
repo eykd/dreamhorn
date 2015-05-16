@@ -9,7 +9,7 @@ module.exports = {
     }
   },
   styles: {
-    src: src + "/styles/**/*.{sass,scss}",
+    src: src + "/styles/**/*.{sass,scss,css}",
     dest: dest,
     settings: {
       imagePath: 'images' // Used by the image-url helper

@@ -86,7 +86,7 @@ class World extends Model
 # `Items` is a [collection][collections] that will contain the player
 # inventory.
 #
- Items extends Collection
+class Items extends Collection
 
 # Situation
 # ---------
@@ -180,7 +180,8 @@ class TitleView extends View
   # they will be called after the constructor.
   initialize: (options) ->
     super options
-    @reset()
+    @set_button_view()
+    @render()
     # Here we begin to see our dispatcher at work. The dispatcher is a simple
     # [backbone.Events][backbone-events] object that we will use to coordinate
     # actions across the application, allowing our application components to be
@@ -202,7 +203,7 @@ class TitleView extends View
     button.append(@button_view.el)
     button.hide()
     @$el.append button
-    button.fadeIn()
+    @dispatcher.trigger "show:begin-button", button
 
   # When the story begins, we may wish to reduce the size of the title
   # "jumbotron", which is rather imposing, especially if we're not intending to
@@ -213,11 +214,14 @@ class TitleView extends View
   begin: ->
     @dispatcher.trigger "reduce:title", @$el
 
+  set_button_view: ->
+    @button_view = new BeginButtonView @options.get_options()
+
   # When we reset the view (or set it up for the first time!) we'll need to
   # instantiate a button view and restore the title "jumbotron" to its original size and state.
   reset: ->
     @dispatcher.trigger "expand:title", @$el
-    @button_view = new BeginButtonView @options.get_options()
+    @set_button_view()
     @render()
 
   # Signal handlers attached to the `@dispatcher` above. We could use `begin`
@@ -297,6 +301,11 @@ class SituationsView extends View
     model = @collection.last()
     situation = @get_situation_from_model model
     situation.relink()
+
+  rerender_latest: ->
+    model = @collection.last()
+    situation = @get_situation_from_model model
+    situation.render()
 
   get_situation_from_model: (model) ->
     if not @situations[model.cid]
@@ -383,7 +392,7 @@ class SituationsView extends View
 
 class SituationView extends View
   tagName: "section"
-  className: "situation center-block"
+  className: "situation center-block card card-hoverable"
 
   events:
     "click a": "on_click"
@@ -395,6 +404,8 @@ class SituationView extends View
     return $ html
 
   render: ->
+    @body = $ '<div class="card-body">'
+    @footer = $ '<div class="card-footer">'
     rendered = @render_template @model.template
 
     rendered.find('a').not('.raw').each (idx, el) ->
@@ -402,8 +413,15 @@ class SituationView extends View
       href = $el.attr('href')
       $el.data 'href', href
       $el.attr('href', undefined)
+    @body.html(rendered)
+    @$el.html ''
+    @$el.append @body
+    @$el.append @footer
 
-    @$el.html rendered
+    classes = @model.get('classes')
+    if classes
+      @$el.addClass(classes)
+
 
   unlink: ->
     @$('a').not('.sticky').addClass('disabled')
@@ -425,7 +443,7 @@ class SituationView extends View
     if _.isString result
       template = _.template result
       rendered = @render_template template
-      @$el.append rendered
+      @body.append rendered
 
   on_click: (evt) =>
     $a = $ evt.target

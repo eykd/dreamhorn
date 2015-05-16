@@ -8,13 +8,15 @@ D.situation 'begin',
   before_enter: (options) ->
     options.world.set 'wearing cloak', true
 
+  classes: "card-primary"
+
   content: """
 
   Hurrying through the rainswept November night, you're glad to see the bright
   lights of the Opera House. It's surprising that there aren't more people
   about but, hey, what do you expect in a cheap demo game...?
 
-  [Onward!](replace!rooms:foyer)
+  [Onward!](push!rooms:foyer)
 
   """
 
@@ -33,8 +35,8 @@ D.situation 'rooms:foyer',
 
   You are standing in a spacious hall, splendidly decorated in red and gold,
   with glittering chandeliers overhead. The entrance from the street is to the
-  [north](push!rooms:outside), and there are doorways [south](replace!rooms:bar) and
-  [west](replace!rooms:cloakroom).
+  [north](push!rooms:outside), and there are doorways [south](push!rooms:bar) and
+  [west](push!rooms:cloakroom).
 
   """
 
@@ -45,7 +47,7 @@ D.situation 'rooms:cloakroom',
 
   The walls of this small room were clearly once lined with hooks,
   though now only [one](push!items:hook) remains. The exit is a door to
-  the [east](replace!rooms:foyer).
+  the [east](pop!).
 
 
   """
@@ -73,7 +75,7 @@ D.situation 'rooms:bar',
   """
   actions:
     'back out slowly': ->
-      D.replace 'rooms:foyer'
+      D.pop()
 
     'fumble around for a light': ->
       D.push 'actions:fumble around'
