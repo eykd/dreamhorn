@@ -3,7 +3,7 @@
 _ = require('lodash')
 ramjet = require('ramjet')
 
-dreamhorn = require('./dreamhorn')
+D = require('../dreamhorn')
 
 DURATION = 500
 
@@ -21,7 +21,7 @@ make_invisible = ($el) ->
   $el.css({visibility: 'hidden'}).show()
 
 
-dreamhorn.dispatcher.on "expand:title", ($el) ->
+D.dispatcher.on "expand:title", ($el) ->
   $el.velocity('fadeOut', DURATION * 2)
      .removeClass('page-header')
      .addClass('jumbotron')
@@ -30,7 +30,7 @@ dreamhorn.dispatcher.on "expand:title", ($el) ->
     duration: DURATION
 
 
-dreamhorn.dispatcher.on "reduce:title", ($el) ->
+D.dispatcher.on "reduce:title", ($el) ->
   container = $el.parent()
   container.height $el.outerHeight(true)
   el = $el.get 0
@@ -47,18 +47,18 @@ dreamhorn.dispatcher.on "reduce:title", ($el) ->
     duration: DURATION
 
 
-dreamhorn.dispatcher.on "show:begin-button", ($el) ->
+D.dispatcher.on "show:begin-button", ($el) ->
   $el.velocity(
     'transition.expandIn',
     {visibility: "visible", duration: DURATION, delay: 100})
 
 
-dreamhorn.dispatcher.on "remove:begin-button", ($el) ->
+D.dispatcher.on "remove:begin-button", ($el) ->
   $.Velocity($el.get(0), 'transition.expandOut', {duration: DURATION / 2}).then ->
     $el.remove()
 
 
-dreamhorn.dispatcher.on "show:situation", ($el, $trigger) ->
+D.dispatcher.on "show:situation", ($el, $trigger) ->
   make_invisible($el)
   # $el.velocity('transition.enter', {duration: DURATION * 3})
   sequence = [
@@ -78,7 +78,7 @@ dreamhorn.dispatcher.on "show:situation", ($el, $trigger) ->
   $.Velocity.RunSequence(sequence)
 
 
-dreamhorn.dispatcher.on "remove:situation", ($el, $trigger) ->
+D.dispatcher.on "remove:situation", ($el, $trigger) ->
   sequence = [
     {
       e: $el, p: 'transition.bounceRightOut',

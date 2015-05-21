@@ -111,16 +111,22 @@ require('velocity-ui-pack')
 # Quite a bit of Dreamhorn is configurable. Here we require the main
 # configuration object. We'll be making use of this shortly, but if you have any
 # questions, you may find them answered in the [annotated source](./config.html).
-config = require('./config')
+config = require('./game/config')
 
 
 # Finally! Dreamhorn itself! Marvel in its beauty!
+#
 dreamhorn = require('./dreamhorn')
+
+# We'll also want to get fancy with some effectual motion design and spiffy animations:
+#
+require('./game/effects')
 
 # Anyway. Last, but certainly not least, we'll require our main content file,
 # which will really make for some exciting times very shortly. Be sure to check
 # out the [annotated source](./main.html).
-require('./main')
+require('./game/main')
+
 
 # Now that we've taken care of our requirements, we will use a little [jQuery
 # trick][ready] to wait until the web browser has gotten the page ready. Once the

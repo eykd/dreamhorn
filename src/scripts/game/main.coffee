@@ -1,8 +1,7 @@
 'use strict';
 
 $ = require('jquery')
-D = require('./dreamhorn')
-require('./effects')
+D = require('../dreamhorn')
 
 
 D.situation 'begin',
