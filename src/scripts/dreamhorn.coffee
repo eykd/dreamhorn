@@ -29,7 +29,7 @@ Chance = require('chance')
 
 # Our config library makes its reprise. We'll be needing it shortly.
 #
-config = require('./config')
+config = require('./game/config')
 
 # And, of course, we'll be needing something to translate [Markdown][markdown]
 # into HTML. The [`markdown-it`][markdown-it] package will do very
@@ -389,7 +389,6 @@ class SituationView extends View
 
   render: ->
     @body = $ '<div class="card-body">'
-    @footer = $ '<div class="card-footer">'
     rendered = @render_template @model.template
 
     rendered.find('a').not('.raw').each (idx, el) ->
@@ -400,7 +399,17 @@ class SituationView extends View
     @body.html(rendered)
     @$el.html ''
     @$el.append @body
-    @$el.append @footer
+
+    choices = @model.get('choices')
+    if choices
+      $footer = $ '<div class="card-footer">'
+      @$el.append $footer
+      $choices = $ '<ul class="choices">'
+      $footer.append(choices)
+
+      for text, directive of choices
+        $choice = $ '<li><a data-href="#{directive}">#{text}</a></li>'
+        $choices.append $choice
 
     classes = @model.get('classes')
     if classes
