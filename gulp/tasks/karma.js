@@ -10,4 +10,14 @@ var karmaTask = function(done) {
 
 gulp.task('karma', karmaTask);
 
+
+var karmaWatchTask = function(done) {
+  karma.server.start({
+    configFile: process.cwd() + '/karma.conf.js',
+    singleRun: false
+  }, done);
+};
+
+gulp.task('karma-watch', karmaWatchTask);
+
 module.exports = karmaTask;

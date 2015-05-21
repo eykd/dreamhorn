@@ -4,19 +4,8 @@
 # *In which we get down to brass tacks.*
 #
 # Dreamhorn is a platform for choice-based interactive fiction, inspired by Undum
-# and Raconteur. You can read more about it in the [Introduction](./index.html).
+# and Raconteur. You can read more about it in the [Introduction][intro].
 #
-# [backbone]: <http://backbonejs.org/>
-# [coffee]: <http://coffeescript.org/>
-# [coffee-class]: <http://coffeescript.org/#classes>
-# [coffee-initialize]: <http://backbonejs.org/#Model-constructor>
-# [collections]: <http://backbonejs.org/#Collection>
-# [jquery]: <http://jquery.com/>
-# [lodash]: <https://lodash.com>
-# [markdown]: <http://daringfireball.net/projects/markdown/syntax>
-# [markdown-it]: <https://markdown-it.github.io/>
-# [models]: <http://backbonejs.org/#Model>
-
 # Preamble
 # --------
 #
@@ -93,7 +82,7 @@ class Items extends Collection
 #
 # A Situation is a custom [model][models] that corresponds to a presentation of
 # text and choices. We'll explore this more deeply in our usage example, [The
-# Cloak of Darkness](./main.html).
+# Cloak of Darkness][main].
 #
 class Situation extends Model
   # Here we meet Backbone's [`initialize`][backbone-initialize] in the
@@ -114,9 +103,7 @@ class Situations extends Collection
   # rehydrate a plain old Javascript object into a fancy-pants [Backbone
   # Model][models].
   #
-  # [collection-add]: http://backbonejs.org/#Collection-add
   model: Situation
-
 
 
 # Quality
@@ -152,8 +139,6 @@ class Qualities extends Backbone.Collection
 # to handle events generated on the page. Again, here we're just creating a
 # custom view that knows about our dispatcher.
 #
-# [views]: http://backbonejs.org/#View
-#
 class View extends Backbone.View
   initialize: (options) ->
     @options = options
@@ -187,8 +172,6 @@ class TitleView extends View
     # actions across the application, allowing our application components to be
     # [loosely coupled][loose-coupling].
     #
-    # [backbone-events]: http://backbonejs.org/#Events
-    # [loose-coupling]: https://en.wikipedia.org/wiki/Loose_coupling
     @dispatcher.on 'reset', @on_reset
     @dispatcher.on 'begin', @on_begin
 
@@ -210,7 +193,6 @@ class TitleView extends View
   # scroll far down the page. To see how this might be handled, visit the
   # [Effects][effects] appendix.
   #
-  # [effects]: ./effects.html
   begin: ->
     @dispatcher.trigger "reduce:title", @$el
 
@@ -230,7 +212,6 @@ class TitleView extends View
   # `=>`, which is [Coffeescript's way][fat-arrow] of ensuring that these methods remain
   # bound to their object.
   #
-  # [fat-arrow]: http://coffeescript.org/#fat-arrow
   on_begin: =>
     @begin()
 
@@ -253,7 +234,6 @@ class BeginButtonView extends View
   # Views that handle DOM events can [define their event
   # handlers][view-dom-event-handlers] by name here:
   #
-  # [view-dom-event-handlers]: http://backbonejs.org/#View-delegateEvents
   events:
     "click": "on_click"
 
@@ -276,7 +256,7 @@ class BeginButtonView extends View
 # The Situations View
 # -------------------
 
-# The Situations View handles adding new Situations to the current state.
+# The Situations View handles adding new Situations to the current state. It takes over the
 #
 class SituationsView extends View
   initialize: (options) ->
@@ -422,6 +402,8 @@ class SituationView extends View
     if classes
       @$el.addClass(classes)
 
+    @$el.attr('data-situation', @model.get('id'))
+
 
   unlink: ->
     @$('a').not('.sticky').addClass('disabled')
@@ -538,6 +520,19 @@ class Dreamhorn
 
     @dispatcher.on "pop", @pop
 
+  Model: Model,
+  Collection: Collection,
+  World: World,
+  Items: Items,
+  Situation: Situation,
+  Situations: Situations,
+  View: View,
+  TitleView: TitleView,
+  BeginButtonView: BeginButtonView,
+  SituationsView: SituationsView,
+  SituationView: SituationView,
+  RootView: RootView,
+
   push: (situation_id) =>
     situation = @situations.get situation_id
     if not situation
@@ -604,3 +599,23 @@ class Dreamhorn
 
 
 module.exports = new Dreamhorn()
+
+# [backbone]: <http://backbonejs.org/>
+# [backbone-events]: http://backbonejs.org/#Events
+# [coffee]: <http://coffeescript.org/>
+# [coffee-class]: <http://coffeescript.org/#classes>
+# [coffee-initialize]: <http://backbonejs.org/#Model-constructor>
+# [collections]: <http://backbonejs.org/#Collection>
+# [collection-add]: http://backbonejs.org/#Collection-add
+# [effects]: ./effects.html
+# [fat-arrow]: http://coffeescript.org/#fat-arrow
+# [intro]: ./index.html
+# [main]: ./main.html
+# [jquery]: <http://jquery.com/>
+# [lodash]: <https://lodash.com>
+# [loose-coupling]: https://en.wikipedia.org/wiki/Loose_coupling
+# [markdown]: <http://daringfireball.net/projects/markdown/syntax>
+# [markdown-it]: <https://markdown-it.github.io/>
+# [models]: <http://backbonejs.org/#Model>
+# [view-dom-event-handlers]: http://backbonejs.org/#View-delegateEvents
+# [views]: http://backbonejs.org/#View

@@ -33,7 +33,7 @@
     "plugin": {
       "exports": "plugin",
       "depends": [
-        "jquery:$"
+        "zepto:$"
       ]
     }
   },
@@ -69,12 +69,17 @@
     "merge-stream": "^0.1.7",
     "pretty-hrtime": "~1.0.0",
     "require-dir": "^0.1.0",
+    "should": "^6.0.3",
     "vinyl-source-stream": "~1.0.0",
     "watchify": "^2.4.0"
   },
   "dependencies": {
+    "blast-text": "^2.0.0",
     "jquery": "~2.1.0",
     "markdown-it": "^4.2.1",
-    "velocity-animate": "^1.2.2"
+    "ramjet": "^0.4.5",
+    "velocity-animate": "^1.2.2",
+    "velocity-ui-pack": "^1.2.2",
+    "zepto": "0.0.4"
   }
 }

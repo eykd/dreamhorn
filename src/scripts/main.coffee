@@ -4,11 +4,10 @@ $ = require('jquery')
 D = require('./dreamhorn')
 require('./effects')
 
+
 D.situation 'begin',
   before_enter: (options) ->
     options.world.set 'wearing cloak', true
-
-  classes: "card-primary"
 
   content: """
 
@@ -20,13 +19,16 @@ D.situation 'begin',
 
   """
 
+
 D.situation 'rooms:outside',
+  classes: "card-warning"
   content: """
 
   You've only just arrived, and besides, the weather outside seems to be
   getting worse. Best to [stay inside](pop!)
 
   """
+
 
 D.situation 'rooms:foyer',
   content: """
@@ -40,6 +42,7 @@ D.situation 'rooms:foyer',
 
   """
 
+
 D.situation 'rooms:cloakroom',
   content: """
 
@@ -51,6 +54,7 @@ D.situation 'rooms:cloakroom',
 
 
   """
+
 
 D.situation 'rooms:bar',
   content: """
