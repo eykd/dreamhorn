@@ -75,6 +75,7 @@
   },
   "dependencies": {
     "blast-text": "^2.0.0",
+    "chance": "^0.7.5",
     "jquery": "~2.1.0",
     "markdown-it": "^4.2.1",
     "ramjet": "^0.4.5",

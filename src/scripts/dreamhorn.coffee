@@ -23,6 +23,10 @@ _ = require('lodash')
 #
 Backbone = require('backbone')
 
+# The [Chance.js][chance] library provides myriad useful randomization tools.
+#
+Chance = require('chance')
+
 # Our config library makes its reprise. We'll be needing it shortly.
 #
 config = require('./config')
@@ -507,6 +511,12 @@ class Dreamhorn
     @world = new World {}, @get_options()
     @items = new Items [], @get_options()
 
+    seed = @options.seed || Math.random()
+    @world.set 'seed', seed
+    @chance = new Chance seed
+    @roll = () =>
+      return @chance.rpg.apply @chance, arguments
+
     @dispatcher.on "all", () =>
       console.log "Action dispatched:", arguments
 
@@ -602,6 +612,7 @@ module.exports = new Dreamhorn()
 
 # [backbone]: <http://backbonejs.org/>
 # [backbone-events]: http://backbonejs.org/#Events
+# [chance]: http://chancejs.com/
 # [coffee]: <http://coffeescript.org/>
 # [coffee-class]: <http://coffeescript.org/#classes>
 # [coffee-initialize]: <http://backbonejs.org/#Model-constructor>
