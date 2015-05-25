@@ -60,7 +60,6 @@ D.dispatcher.on "remove:begin-button", ($el) ->
 
 D.dispatcher.on "show:situation", ($el, $trigger) ->
   make_invisible($el)
-  # $el.velocity('transition.enter', {duration: DURATION * 3})
   sequence = [
     {
       e: $el, p: {height: 0},

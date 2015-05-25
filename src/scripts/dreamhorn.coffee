@@ -32,10 +32,11 @@ Chance = require('chance')
 config = require('./game/config')
 
 # And, of course, we'll be needing something to translate [Markdown][markdown]
-# into HTML. The [`markdown-it`][markdown-it] package will do very
+# into HTML. The [`marked`][marked] package will do very
 # nicely. We'll provide it with configuration from our `config` object.
 #
-markdown = require('markdown-it') 'default', config.markdown
+markdown = require('marked')
+markdown.setOptions config.markdown
 
 
 # Models & Collections
@@ -384,7 +385,7 @@ class SituationView extends View
   render_template: (template) ->
     context = _.extend {}, @options.get_options(), @model.toJSON()
     result = template context
-    html = markdown.render result
+    html = markdown result
     return $ html
 
   render: ->
@@ -395,7 +396,7 @@ class SituationView extends View
       $el = $ el
       href = $el.attr('href')
       $el.data 'href', href
-      $el.attr('href', undefined)
+      $el.attr('href', 'javascript:void(0)')
     @body.html(rendered)
     @$el.html ''
     @$el.append @body
@@ -405,11 +406,12 @@ class SituationView extends View
       $footer = $ '<div class="card-footer">'
       @$el.append $footer
       $choices = $ '<ul class="choices">'
-      $footer.append(choices)
 
       for text, directive of choices
-        $choice = $ '<li><a data-href="#{directive}">#{text}</a></li>'
+        $choice = $ "<li><a href=\"javascript:void(0)\" data-href=\"#{directive}\">#{text}</a></li>"
         $choices.append $choice
+
+      $footer.append($choices)
 
     classes = @model.get('classes')
     if classes
@@ -441,6 +443,7 @@ class SituationView extends View
       @body.append rendered
 
   on_click: (evt) =>
+    console.log "a Click!", evt.target
     $a = $ evt.target
     @dispatcher.blackboard.set('last-trigger', $a)
 

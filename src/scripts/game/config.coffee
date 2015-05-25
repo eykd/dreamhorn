@@ -1,13 +1,20 @@
 module.exports =
-  # The name of the situation to begin with
+  # The name of the situation to begin with:
   begin_situation: 'begin'
 
-  # Options controlling Markdown rendering behavior.
+  # [Options][marked-options] for controlling Markdown rendering behavior:
   markdown:
-    html: true
-    typographer: true
+    gfm: false
+    tables: true
+    breaks: false
+    pedantic: false
+    sanitize: false
+    smartLists: true
+    smartypants: true
 
-  # Options controlling animation effect behavior.
+  # Options controlling animation effect behavior:
   effects:
     show_animation_duration: 500
     hide_animation_duration: 500
+
+# [marked-options]: https://github.com/chjj/marked#usage

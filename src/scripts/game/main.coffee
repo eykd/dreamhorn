@@ -41,7 +41,7 @@ D.situation 'rooms:foyer',
 
   """
   choices:
-    "Leave the Opera House by the north entrance": "push!rooms.outside"
+    "Leave the Opera House by the north entrance": "push!rooms:outside"
     "Go South to the Bar": "push!rooms:bar"
     "Go West to the Cloak Room": "push!rooms:cloakroom"
 

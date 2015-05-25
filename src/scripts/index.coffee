@@ -93,12 +93,13 @@
 # --------
 #
 # At this point, we introduce our first lines of code, mostly simple matters of
-# husekeeping. First things first, we must ensure that [jQuery][jquery] is available as a
-# global object. Some code that we will require later depends upon jQuery being
+# housekeeping. First things first, we must ensure that [$][zepto] is available as a
+# global object. Some code that we will require later depends upon Zepto being
 # ready and available globally.
 #
-# [jquery]: http://jquery.com/
-$ = window.$ = window.jQuery = require('jquery')
+# [zepto]: http://zeptojs.com
+require('zepto')
+require('./vendor/zepto.polyfill')
 
 # Next, we have [VelocityJS][velocityjs], a very fast animation suite that also
 # works as a jQuery plugin, along with the [Velocity UI Pack][uipack].
