@@ -2,7 +2,13 @@ module.exports =
   # The name of the situation to begin with:
   begin_situation: 'begin'
 
-  # [Options][marked-options] for controlling Markdown rendering behavior:
+  # And the text to show in the button at the beginning:
+  begin_text: "<em>Begin!</em>"
+
+  # The default action to take when none is specified:
+  default_action: 'push'
+
+  # Options for [controlling Markdown rendering behavior][marked-options]:
   markdown:
     gfm: false
     tables: true
@@ -14,7 +20,6 @@ module.exports =
 
   # Options controlling animation effect behavior:
   effects:
-    show_animation_duration: 500
-    hide_animation_duration: 500
+    base_animation_duration: 500
 
 # [marked-options]: https://github.com/chjj/marked#usage

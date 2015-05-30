@@ -5,7 +5,7 @@ ramjet = require('ramjet')
 
 D = require('../dreamhorn')
 
-DURATION = 500
+DURATION = D.config.effects.base_animation_duration
 
 $.Velocity.RegisterEffect 'transition.enter',
   defaultDuration: DURATION * 3
@@ -22,11 +22,11 @@ make_invisible = ($el) ->
 
 
 D.dispatcher.on "expand:title", ($el) ->
-  $el.velocity('fadeOut', DURATION * 2)
+  $el.hide()
      .removeClass('page-header')
      .addClass('jumbotron')
      .velocity('fadeIn', DURATION * 2)
-  $.Velocity $('footer').get(0), 'transition.expandIn',
+  $.Velocity $('#footer').get(0), 'transition.expandIn',
     duration: DURATION
 
 
@@ -43,7 +43,7 @@ D.dispatcher.on "reduce:title", ($el) ->
           $.Velocity(container, {'height': $el.height()}, {duration: DURATION / 2})
             .then ->
               container.height('auto')
-  $.Velocity $('footer').get(0), 'transition.expandOut',
+  $.Velocity $('#footer').get(0), 'transition.expandOut',
     duration: DURATION
 
 
@@ -89,3 +89,15 @@ D.dispatcher.on "remove:situation", ($el, $trigger) ->
       },
   ]
   $.Velocity.RunSequence(sequence)
+
+
+D.dispatcher.on "deactivate:situation", (situation) ->
+  situation.unlink()
+  situation.$('.card-footer').velocity 'slideUp',
+    duration: DURATION
+
+
+D.dispatcher.on "activate:situation", (situation) ->
+  situation.relink()
+  situation.$('.card-footer').velocity 'slideDown',
+    duration: DURATION

@@ -80,12 +80,14 @@
     "watchify": "^2.4.0"
   },
   "dependencies": {
+    "MD5": "^1.2.2",
     "blast-text": "^2.0.0",
     "chance": "^0.7.5",
+    "handlebars": "^3.0.3",
     "markdown-it": "^4.2.1",
     "marked": "^0.3.3",
     "ramjet": "^0.4.5",
     "velocity-animate": "^1.2.2",
-    "velocity-ui-pack": "^1.2.2",
+    "velocity-ui-pack": "^1.2.2"
   }
 }

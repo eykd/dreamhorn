@@ -38,6 +38,56 @@ config = require('./game/config')
 markdown = require('marked')
 markdown.setOptions config.markdown
 
+# Finally, we need to be able to hash the contents of a string. MD5 will work
+# nicely:
+#
+md5 = require('MD5')
+
+
+# Configuration
+# -------------
+#
+# We'll want to make sure that our configuration is populated with proper defaults.
+#
+defaults =
+  # The name of the situation to begin with:
+  begin_situation: 'begin'
+
+  # And the text to show in the button at the beginning:
+  begin_text: "<em>Begin!</em>"
+
+  # The default action to take when none is specified:
+  default_action: 'push'
+
+  # Options for [controlling Markdown rendering behavior][marked-options]:
+  markdown:
+    gfm: false
+    tables: true
+    breaks: false
+    pedantic: false
+    sanitize: false
+    smartLists: true
+    smartypants: true
+
+  template:
+    escape: /<<-([\s\S]+?)>>/g
+    evaluate: /<%([\s\S]+?)%>/g
+    interpolate: /<<([\s\S]+?)>>/g
+    variable: ""
+
+  # Options controlling animation effect behavior:
+  effects:
+    base_animation_duration: 500
+
+  # The base seed for deterministic randomness
+  seed: Math.random()
+
+config = _.extend {}, defaults, config
+
+# Here we'll take a moment to configure our templates:
+#
+_.extend _.templateSettings, config.template
+
 
 # Models & Collections
 # --------------------
@@ -74,13 +124,199 @@ class Collection extends Backbone.Collection
 class World extends Model
 
 
+# Item
+# ----
+#
+# An `Item` is a thing that you do things to or with.
+class Item extends Model
+
+
 # Items
 # -----
 #
-# `Items` is a [collection][collections] that will contain the player
-# inventory.
+# `Items` is a [collection][collections] that holds items.
 #
 class Items extends Collection
+  model: Item
+
+
+# Character
+# ---------
+#
+# A `Character` is a person within a narrative. We'll set up a bunch of useful
+# pronouns, based on whether the `sex` attribute of the character.
+class Character extends Model
+  initialize: (attrs) ->
+    sex = if attrs.sex then attrs.sex.toLowerCase() else ''
+    pronouns =
+      # Subject pronoun:
+      sp: pronoun sex, 'he', 'she', 'they'
+      SP: pronoun sex, 'He', 'She', 'They'
+      # Object pronoun:
+      op: pronoun sex, 'him', 'her', 'them'
+      OP: pronoun sex, 'Him', 'Her', 'Them'
+      # Reflexive pronoun:
+      rp: pronoun sex, 'himself', 'herself', 'themself'
+      RP: pronoun sex, 'Himself', 'Herself', 'Themself'
+      # Possessive adjective:
+      pa: pronoun sex, 'his', 'her', 'their'
+      PA: pronoun sex, 'His', 'Her', 'Their'
+      # Possessive pronoun
+      pp: pronoun sex, 'his', 'hers', 'theirs'
+      PP: pronoun sex, 'His', 'Hers', 'Theirs'
+
+    # In the interest of making pronouns in templates very easy to work with,
+    # we'll add lots of convenient shortcuts:
+    pronouns.he = pronouns.sp
+    pronouns.He = pronouns.SP
+    pronouns.him = pronouns.op
+    pronouns.Him = pronouns.OP
+    pronouns.himself = pronouns.rp
+    pronouns.Himself = pronouns.RP
+    # But some pronouns overlap, which isn't very convenient:
+    pronouns.his_poss_adj = pronouns.pa
+    pronouns.His_poss_adj = pronouns.PA
+    pronouns.his_poss_pro = pronouns.pp
+    pronouns.His_poss_pro = pronouns.PP
+
+    pronouns.she = pronouns.sp
+    pronouns.She = pronouns.SP
+    pronouns.her_obj = pronouns.op
+    pronouns.Her_obj = pronouns.OP
+    pronouns.herself = pronouns.rp
+    pronouns.Herself = pronouns.RP
+    pronouns.her_poss_adj = pronouns.pa
+    pronouns.Her_poss_adj = pronouns.PA
+    pronouns.hers = pronouns.pp
+    pronouns.Hers = pronouns.PP
+
+    pronouns.they = pronouns.sp
+    pronouns.They = pronouns.SP
+    pronouns.them = pronouns.op
+    pronouns.Them = pronouns.OP
+    pronouns.themself = pronouns.rp
+    pronouns.Themself = pronouns.RP
+    pronouns.their = pronouns.pa
+    pronouns.Their = pronouns.PA
+    pronouns.theirs = pronouns.pp
+    pronouns.Theirs = pronouns.PP
+
+    if attrs.first
+      # Possessive first name
+      pronouns.pfirst = attrs.first + "'s"
+    if attrs.last
+      # Possessive last name
+      pronouns.plast = attrs.last + "'s"
+    if attrs.name
+      # Possessive name
+      pronouns.pname = attrs.name + "'s"
+
+    @set pronouns
+
+# Characters
+# -----
+#
+# `Characters` is a [collection][collections] that will contain characters.
+#
+class Characters extends Collection
+  model: Character
+
+
+# Helper functions
+# ----------------
+#
+# Choose a pronoun based on whether the character's `sex` attribute is
+# 'male', 'female', or otherwise..
+pronoun = (sex, male_pronoun, female_pronoun, otherwise) ->
+  # If the `sex` object has a `sex` attribute (e.g. a Character's `attributes`
+  # object), we'll use that instead.
+  if sex.sex
+    sex = sex.sex
+  sex = sex.toLowerCase()
+  if sex == 'male'
+    return male_pronoun
+  else if sex == 'female'
+    return female_pronoun
+  else
+    return otherwise
+
+
+one_of_cache = {}
+
+# one_of
+# ------
+#
+# Work easily with a sequence of strings.
+one_of = () ->
+  sequence = Array.prototype.slice.call(arguments)
+
+  # If we've seen this sequence before, we want to use a cached version of our
+  # iterators to maintain state in between uses.
+  hash = md5(JSON.stringify(sequence))
+  obj = one_of_cache[hash]
+
+  if not obj
+    # Here we build the `one_of` object with its iterator functions. Each
+    # stores its state inside a closure.
+    obj = one_of_cache[hash] =
+      # Cycle through the sequence, returning each item in order and wrapping
+      # back to the beginning.
+      cycling: (() ->
+        cycler = sequence.slice()
+        i = -1
+        return () ->
+          i += 1
+          if i >= cycler.length
+            i = 0
+          return cycler[i]
+        )()
+
+      # Cycle through the sequence, returning each item in order until we reach
+      # the end of the sequence. Continue to return the last item forevermore
+      # after.
+      stopping: (() ->
+        cycler = sequence.slice()
+        i = -1
+        return () ->
+          i += 1
+          if i >= cycler.length
+            i = cycler.length - 1
+          return cycler[i]
+        )()
+
+      # Return a random item from the sequence. Crucially, it won't return the
+      # same item twice in a row.
+      randomly: (() ->
+        last_item = null
+        return () ->
+          item = last_item
+          while item == last_item
+            item = D.chance.pick sequence
+          last_item = item
+          return item
+        )()
+
+      # Return a random item from the sequence. May return the same item twice
+      # or more times in a row!
+      truly_at_random: (() ->
+        return () ->
+          return D.chance.pick sequence
+        )()
+
+      # Shuffle the sequence and iterate through, wrapping around to the
+      # beginning of the shuffled sequence.
+      in_random_order: (() ->
+        cycler = D.chance.shuffle sequence
+        i = -1
+        return () ->
+          i += 1
+          if i >= cycler.length
+            i = cycler.length - 1
+          return cycler[i]
+        )()
+
+  return obj
+
 
 # Situation
 # ---------
@@ -94,7 +330,7 @@ class Situation extends Model
   # wild. Again, this gets called *after* the Model constructor defined above.
   initialize: (attributes, options) ->
     super attributes, options
-    @template = _.template @get 'content'
+    @template = as_template @get 'content'
 
 
 # Situations
@@ -150,6 +386,26 @@ class View extends Backbone.View
     @dispatcher = options.dispatcher
     super options
 
+
+# Template Rendering
+# ------------------
+#
+# We use [lodash templates][templates], which provides a powerful and
+# expressive template language (essentially, it's just interpolated
+# javascript).
+#
+as_template = (content) ->
+  if _.isFunction content
+    content = content()
+
+  imports =
+    pronoun: pronoun
+    D: D
+    _: _
+
+  D.dispatcher.trigger 'set-template-imports', imports
+  return _.template content,
+    imports: imports
 
 
 # The Title View
@@ -243,7 +499,7 @@ class BeginButtonView extends View
     "click": "on_click"
 
   render: ->
-    text = this.options.begin_text || '<em>Begin!</em>'
+    text = config.begin_text
     this.$el.html text
 
   # The handler for the DOM `click` event. Here we send, or `trigger` events on
@@ -324,44 +580,69 @@ class SituationsView extends View
     if _.isFunction after
       after situation.options
 
+  deactivate_all: ->
+    @collection.forEach (model) =>
+      situation = @get_situation_from_model model
+      @deactivate_situation(situation)
+
+  deactivate_situation: (situation) ->
+    @dispatcher.trigger 'deactivate:situation', situation
+
+  activate_situation: (situation) ->
+    @dispatcher.trigger 'activate:situation', situation
+
+  reactivate_latest: ->
+    model = @collection.last()
+    situation = @get_situation_from_model model
+    @activate_situation(situation)
+
   show_situation: (situation) ->
     duration = @options.show_animation_duration || 500
     trigger = @dispatcher.blackboard.get('last-trigger')
-    @dispatcher.trigger "show:situation", situation.$el, trigger, duration
+    @dispatcher.trigger "show:situation", situation.$el, trigger
     _.delay((() -> situation.$el.show()), duration)
 
   remove_situation: (situation) ->
     trigger = @dispatcher.blackboard.get('last-trigger')
     @dispatcher.trigger "remove:situation", situation.$el, trigger
 
-  push: (model) =>
-    @unlink_all()
+  push: (model, data) =>
+    @deactivate_all()
     situation = @get_situation_from_model model
     @run_before_entering situation
-    situation.render()
+    if data
+      prepend = data.prepend
+      if prepend and data.prepend_newline
+        prepend += '\n\n'
+    situation.render(prepend)
     situation.$el.hide()
     @$el.append situation.el
     @show_situation situation
     @run_after_entering situation
 
-  pop: (model, relink=true) =>
+  pop: (model, data) =>
+    if not _.isUndefined data
+      reactivate = if _.isUndefined(data.reactivate) then true else false
+    else
+      reactivate = true
     situation = @get_situation_from_model model
     @run_before_exiting situation
     @remove_situation situation
     @run_after_exiting situation
     delete @situations[model.cid]
-    if relink
-      @relink_latest()
+    if reactivate
+      @reactivate_latest()
 
-  on_push: (model) =>
-    @push model
+  on_push: (model, data) =>
+    @push model, data
 
-  on_replace: (popped, pushed) =>
-    @pop popped, relink=false
-    @push pushed
+  on_replace: (popped, pushed, data) =>
+    data.reactivate = false
+    @pop popped, data
+    @push pushed, data
 
-  on_pop: (model) =>
-    @pop model
+  on_pop: (model, data) =>
+    @pop model, data
 
   on_reset: () =>
     for cid, situation of @situations
@@ -381,16 +662,30 @@ class SituationView extends View
 
   events:
     "click a": "on_click"
+    "input *": "on_input"
+    "change *": "on_input"
 
-  render_template: (template) ->
-    context = _.extend {}, @options.get_options(), @model.toJSON()
+  get_context: (extra_context) ->
+    context = _.extend(
+      {},
+      @options.get_options(),
+      @model.toJSON(),
+      {world: @options.world.attributes},
+      extra_context)
+    @dispatcher.trigger 'set-template-context', context
+    return context
+
+  render_template: (template, prepend) ->
+    context = @get_context()
     result = template context
+    if not _.isUndefined(prepend)
+      result = "#{prepend}#{result}"
     html = markdown result
     return $ html
 
-  render: ->
+  render: (prepend) ->
     @body = $ '<div class="card-body">'
-    rendered = @render_template @model.template
+    rendered = @render_template @model.template, prepend
 
     rendered.find('a').not('.raw').each (idx, el) ->
       $el = $ el
@@ -403,12 +698,43 @@ class SituationView extends View
 
     choices = @model.get('choices')
     if choices
-      $footer = $ '<div class="card-footer">'
+      if _.isFunction choices
+        choices = choices()
+      $footer = $ '<footer class="card-footer">'
       @$el.append $footer
       $choices = $ '<ul class="choices">'
 
       for text, directive of choices
-        $choice = $ "<li><a href=\"javascript:void(0)\" data-href=\"#{directive}\">#{text}</a></li>"
+        text = as_template(text) @get_context()
+        text = _.trimRight(text)
+        if not _.isString directive
+          id = directive.get('id')
+          action = config.default_action
+          directive = "#{action}!#{id}"
+        if _.endsWith text, '//'
+          prepend_newline = _.endsWith text, '///'
+          text = _.trimRight text, '/'
+          optional_p = /\[([^\]+])\](.+)$/
+          anchor_text = text.replace optional_p, '$2'
+          prepend_text = text.replace optional_p, '$1'
+        else
+          anchor_text = text
+          prepend_text = ''
+          prepend_newline = false
+        html = markdown anchor_text
+        $choice = $ """
+          <li>
+            <a href="javascript:void(0)"
+               data-href="#{directive}">
+            #{html}
+            </a>
+          </li>"""
+        $a = $choice.find('a').first()
+        # Rather than set the `data-` attributes in the template, we'll use Zepto
+        # to set data on the DOM element directly, so we don't have to worry
+        # about serialization concerns.
+        $a.data('prepend', prepend_text)
+        $a.data('prepend-newline', prepend_newline)
         $choices.append $choice
 
       $footer.append($choices)
@@ -436,50 +762,64 @@ class SituationView extends View
   handle_action: (event, $el) ->
     actions = @model.get('actions')
     action = actions[event]
-    result = action($el)
-    if _.isString result
-      template = _.template result
-      rendered = @render_template template
-      @body.append rendered
+    @write action($el)
+
+  write: (text) ->
+    @body.append @render_template as_template text
 
   on_click: (evt) =>
     console.log "a Click!", evt.target
-    $a = $ evt.target
+    $a = $(evt.target).closest('a')
     @dispatcher.blackboard.set('last-trigger', $a)
 
     if not $a.hasClass 'raw'
       evt.preventDefault()
       if not $a.hasClass 'disabled'
-        [event, arg] = @parse_directive $a.text(), $a.data('href')
+        [event, data] = @parse_directive $a.text(), $a.data('href')
+        data.prepend = $a.data('prepend') or data.prepend
+        data.prepend_newline = $a.data('prepend-newline') or data.prepend_newline
+        data.click = evt
+        data.anchor = $a
         if @is_action event
           @handle_action event, $a
-          @dispatcher.trigger 'action', event, arg
+          @dispatcher.trigger 'action', event, data
         else
-          @dispatcher.trigger event, arg
+          @dispatcher.trigger event, data
 
+  on_input: _.debounce(((evt) =>
+      $input = $ evt.target
+      name = $input.attr 'name'
+      value = $input.val()
+      D.world.set(name, value)
+      console.log $input.attr('name'), $input.val()
+    ), 300)
   parse_directive: (text, directive) ->
-    event = null
-    arg = undefined
+    data = {event: event, text: text, directive: directive}
     if directive == '!'
-      # !: Trigger an event of the same name as anchor text
-      event = text
+      if @is_action text
+        # !: Trigger an event of the same name as anchor text
+        data.event = text
+      else
+        data.event = config.default_action
+        data.target = text
     else if '!' in directive
       if _.startsWith directive, '!'
         # !event: Trigger the event named
-        event = _.trimLeft directive, '!'
+        data.event = _.trimLeft directive, '!'
       else
         # action!arg: Call the action with the given argument
-        [event, arg] = directive.split '!', 2
+        [data.event, data.target] = directive.split '!', 2
     else
-      event = directive
+      data.event = config.default_action
+      data.target = directive
 
-    if not arg
-      arg = text.toLowerCase()
+    if not data.target
+      data.target = text.toLowerCase()
 
-    event = event.toLowerCase()
+    event = data.event.toLowerCase()
 
-    console.log "Parsed directive", text, directive, 'as', event, arg
-    return [event, arg]
+    console.log "Parsed directive", text, directive, 'as', event, data
+    return [event, data]
 
 # The Root View
 # -------------
@@ -492,11 +832,11 @@ class RootView extends View
 
     @views =
       title: new TitleView options.get_options
-        el: @$('.banner').get(0)
+        el: @$('#header').get(0)
 
       situations: new SituationsView options.get_options
         collection: options.stack
-        el: @$('.situations').get(0)
+        el: @$('#situations').get(0)
 
     @views.title.render()
 
@@ -522,8 +862,9 @@ class Dreamhorn
     @stack = new Situations [], @get_options()
     @world = new World {}, @get_options()
     @items = new Items [], @get_options()
+    @seen = {}
 
-    seed = @options.seed || Math.random()
+    seed = config.seed
     @world.set 'seed', seed
     @chance = new Chance seed
     @roll = () =>
@@ -534,7 +875,7 @@ class Dreamhorn
 
     @dispatcher.on "begin", () =>
       begin_id = @options.begin_situation || 'begin'
-      @push begin_id
+      @push {target: begin_id}
 
     @dispatcher.on "replace", @replace
 
@@ -542,37 +883,62 @@ class Dreamhorn
 
     @dispatcher.on "pop", @pop
 
-  Model: Model,
-  Collection: Collection,
-  World: World,
-  Items: Items,
-  Situation: Situation,
-  Situations: Situations,
-  View: View,
-  TitleView: TitleView,
-  BeginButtonView: BeginButtonView,
-  SituationsView: SituationsView,
-  SituationView: SituationView,
-  RootView: RootView,
+  config: config
+  next: '-->'
 
-  push: (situation_id) =>
-    situation = @situations.get situation_id
+  Model: Model
+  Collection: Collection
+  World: World
+  Item: Item
+  Items: Items
+  Character: Character
+  Characters: Characters
+  Situation: Situation
+  Situations: Situations
+  View: View
+  TitleView: TitleView
+  BeginButtonView: BeginButtonView
+  SituationsView: SituationsView
+  SituationView: SituationView
+  RootView: RootView
+
+  push: (data) =>
+    if _.isString data
+      situation_id = data
+      data = {target: situation_id}
+    else
+      situation_id = data.target
+    if situation_id == '-->'
+      # Get the next situation in sequence
+      current = @stack.last()
+      index = @situations.indexOf(current)
+      situation = @situations.at(index + 1)
+      situation_id = situation.get('id')
+    else
+      situation = @situations.get situation_id
     if not situation
       throw new Error "No such situation #{situation_id}"
+    seen = @seen[situation_id]
+    @seen[situation_id] = if not seen then 1 else seen + 1
     @stack.push situation
-    @stack.trigger 'push', situation
+    @stack.trigger 'push', situation, data
     return situation
 
-  pop: (situation_id) =>
+  pop: (data) =>
     situation = @stack.pop()
-    @stack.trigger 'pop', situation
+    @stack.trigger 'pop', situation, data
     return situation
 
-  replace: (situation_id) =>
+  replace: (data) =>
+    if _.isString(data)
+      situation_id = data
+      data = {target: situation_id}
+    else
+      situation_id = data.target
     popped = @stack.pop()
     situation = @situations.get situation_id
     @stack.push situation
-    @stack.trigger 'replace', popped, situation
+    @stack.trigger 'replace', popped, situation, data
     return [popped, situation]
 
   get_options: (suboptions) ->
@@ -611,16 +977,18 @@ class Dreamhorn
     else
       data.id = id.toLowerCase()
     if not id
-      throw new Error("No ID provided with new situation!")
+      id = data.id = md5(JSON.stringify(data))
+      console.log "Constructed MD5 ID #{id} for", data
     @situations.add(data)
     return @situations.get id
 
   init: (options) ->
     @options = _.extend {}, @options, options
     @root = new RootView @get_options()
+    @dispatcher.trigger 'init', this
 
 
-module.exports = new Dreamhorn()
+D = module.exports = new Dreamhorn()
 
 # [backbone]: <http://backbonejs.org/>
 # [backbone-events]: http://backbonejs.org/#Events
@@ -638,7 +1006,8 @@ module.exports = new Dreamhorn()
 # [lodash]: <https://lodash.com>
 # [loose-coupling]: https://en.wikipedia.org/wiki/Loose_coupling
 # [markdown]: <http://daringfireball.net/projects/markdown/syntax>
-# [markdown-it]: <https://markdown-it.github.io/>
+# [marked-options]: https://github.com/chjj/marked#usage
 # [models]: <http://backbonejs.org/#Model>
+# [templates]: https://lodash.com/docs#template
 # [view-dom-event-handlers]: http://backbonejs.org/#View-delegateEvents
 # [views]: http://backbonejs.org/#View

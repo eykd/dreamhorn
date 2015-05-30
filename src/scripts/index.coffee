@@ -117,7 +117,7 @@ config = require('./game/config')
 
 # Finally! Dreamhorn itself! Marvel in its beauty!
 #
-dreamhorn = require('./dreamhorn')
+window.D = dreamhorn = require('./dreamhorn')
 
 # We'll also want to get fancy with some effectual motion design and spiffy animations:
 #
