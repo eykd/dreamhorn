@@ -86,6 +86,7 @@
     "handlebars": "^3.0.3",
     "markdown-it": "^4.2.1",
     "marked": "^0.3.3",
+    "mersenne-twister": "^1.0.1",
     "ramjet": "^0.4.5",
     "velocity-animate": "^1.2.2",
     "velocity-ui-pack": "^1.2.2"

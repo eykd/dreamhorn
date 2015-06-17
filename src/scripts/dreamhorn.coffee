@@ -27,16 +27,21 @@ Backbone = require('backbone')
 #
 Chance = require('chance')
 
+# Our homegrown Ring library provides basic, extensible randomization tools.
+Ring = require('./ring/core')
+
 # Our config library makes its reprise. We'll be needing it shortly.
 #
 config = require('./game/config')
+
+# We'll need the Handlebars templating library...
+Handlebars = require('handlebars')
 
 # And, of course, we'll be needing something to translate [Markdown][markdown]
 # into HTML. The [`marked`][marked] package will do very
 # nicely. We'll provide it with configuration from our `config` object.
 #
-markdown = require('marked')
-markdown.setOptions config.markdown
+marked = require('marked')
 
 # Finally, we need to be able to hash the contents of a string. MD5 will work
 # nicely:
@@ -61,32 +66,118 @@ defaults =
 
   # Options for [controlling Markdown rendering behavior][marked-options]:
   markdown:
-    gfm: false
+    # Enable github-flavored Markdown?
+    gfm: true
+    # Enable github-flavored Markdown tables? (requires `gfm` to be true)
     tables: true
+    # Enable github-flavored Markdown line-breaks? (requires `gfm` to be true)
     breaks: false
+    # Conform to obscure parts of markdown.pl as much as possible. Don't fix
+    # any of the original markdown bugs or poor behavior.
     pedantic: false
+    # Sanitize the output. Ignore any HTML that has been input.
     sanitize: false
+    # Use smarter list behavior than the original markdown. May eventually be
+    # default with the old behavior moved into pedantic.
     smartLists: true
+    # Use "smart" typograhic punctuation for things like quotes and dashes.
     smartypants: true
 
-  template:
+  # Options controlling [lodash templating][_templates]:
+  _template_settings:
+    # A regular expression defining the HTML "escape" syntax, for safely
+    # escaping a context variable containing HTML: `<<- foo >>`, where the
+    # context is `{foo: "<script>evil()</script>"}`, produces
+    # `&lt;script&gt;evil()&lt;/script&gt;`. This is equivalent to Handlebar's
+    # `{{foo}}` syntax.
     escape: /<<-([\s\S]+?)>>/g
+    # A regular expression defining the "evaluate" syntax, for raw javascript
+    # interpolation: `<% if (foo) { %>bar<% } else { %>baz<% } %>`, where the
+    # context is `{foo: true}`, produces `bar`. This is a more verbose and
+    # javascripty version of Handlebar's block expressions. Use this when you get
+    # annoyed with Handlebars.
     evaluate: /<%([\s\S]+?)%>/g
+    # A regular expression defining the "interpolate" syntax, for interpolating
+    # context variables *without* escaping them: `<< foo >>`, where the
+    # context is `{foo: "<script>evil()</script>"}`, produces
+    # `<script>evil()</script>`. This is equivalent to Handlebar's
+    # `{{{foo}}}` syntax.
     interpolate: /<<([\s\S]+?)>>/g
+    # If for some unfathomable reason you don't like that Handlebars uses a
+    # `with` statement to make your context directly accessible within the
+    # template, put a valid javascript name in here, and your context variables
+    # will be namespaced inside that name. If you have no idea what that means,
+    # feel free to ignore this, or read [all about it here][with-statement].
     variable: ""
 
   # Options controlling animation effect behavior:
   effects:
     base_animation_duration: 500
 
-  # The base seed for deterministic randomness
-  seed: Math.random()
+  # The base seed for deterministic randomness:
+  seed: Math.floor Math.random() * 10000000000000000
 
+  # Default templates
+  # -----------------
+  #
+  # Default templates for basic UI. Be very careful if you override these!
+  #
+  # The outermost wrapper for a situation:
+  situation_template: """
+
+    <section class="situation center-block card card-hoverable"></section>
+
+  """
+
+  # The header of a situation (where the close button will be, if closeable):
+  situation_header_template: """
+
+    <div class="situation-header card-header">
+      <div class="pull-right">
+        <a data-href="drop!" href="javascript:void(0)" class="btn">Close</a>
+    </div>
+
+  """
+
+  # The body of a situation (where the content of the situation will be displayed):
+  situation_body_template: """
+
+    <div class="situation-body card-body"></div>
+
+  """
+
+  # The footer of a situation (where the choices will be displayed):
+  situation_footer_template: """
+
+    <footer class="situation-footer card-footer"></footer>
+
+  """
+
+  # The outermost wrapper for the list of choices that will be displayed:
+  situation_choices_template: """
+
+    <ul class="choices"></ul>
+
+  """
+
+  # How each choice will be displayed:
+  situation_choice_template: """
+    <li>
+      <a href="javascript:void(0)"
+         data-href="{{{directive}}}">
+      {{{html}}}
+      </a>
+    </li>"""
+
+# Now, set up our configuration object with defaults overridden by the
+# user-customized configuration.
 config = _.extend {}, defaults, config
 
 # Here we'll take a moment to configure our templates:
-#
-_.extend _.templateSettings, config.template
+_.extend _.templateSettings, config._template_settings
+
+# And markdown:
+marked.setOptions config.markdown
 
 
 # Models & Collections
@@ -144,7 +235,7 @@ class Items extends Collection
 # ---------
 #
 # A `Character` is a person within a narrative. We'll set up a bunch of useful
-# pronouns, based on whether the `sex` attribute of the character.
+# pronouns, based on the `sex` attribute of the character.
 class Character extends Model
   initialize: (attrs) ->
     sex = if attrs.sex then attrs.sex.toLowerCase() else ''
@@ -240,6 +331,10 @@ pronoun = (sex, male_pronoun, female_pronoun, otherwise) ->
   else
     return otherwise
 
+# We'll also make `pronoun` available as a helper inside of Handlebar
+# templates:
+Handlebars.registerHelper 'pronoun', pronoun
+
 
 one_of_cache = {}
 
@@ -318,6 +413,11 @@ one_of = () ->
   return obj
 
 
+# We'll also make `one_of` available as a helper inside of Handlebar
+# templates:
+Handlebars.registerHelper 'one_of', one_of
+
+
 # Situation
 # ---------
 #
@@ -390,22 +490,39 @@ class View extends Backbone.View
 # Template Rendering
 # ------------------
 #
-# We use [lodash templates][templates], which provides a powerful and
-# expressive template language (essentially, it's just interpolated
-# javascript).
+# We use [Handlebar templates][handlebars] *and* [lodash
+# templates][_templates], which provide a powerful and expressive pair of
+# template languages. Handlebar templates are simple and expressive. Lodash
+# templates are essentially just interpolated javascript, and hence very
+# powerful, but a bit harder to type for the common case. Use whichever feels
+# most comfortable and expressive.
 #
 as_template = (content) ->
+  # The content may itself be a function which must resolve to a
+  # string.
   if _.isFunction content
     content = content()
 
-  imports =
+  # For Lodash templates, we'll provide some useful default context.
+  _imports =
     pronoun: pronoun
-    D: D
     _: _
 
-  D.dispatcher.trigger 'set-template-imports', imports
-  return _.template content,
-    imports: imports
+  # We'll also offer the chance for custom handlers to extend the Lodash
+  # context.
+  D.dispatcher.trigger 'set-template-imports', _imports
+
+  # Now, we compile the Handlebars template.
+  template = Handlebars.compile content
+
+  # And we return a wrapper function which will apply the lodash template to
+  # the rendered Handlebars template, and render that. Sure, it's a bit
+  # inefficient, but it works.
+  return (context) ->
+    result = template context
+    _tmpl = _.template result,
+      imports: _imports
+    return _tmpl context
 
 
 # The Title View
@@ -526,86 +643,115 @@ class SituationsView extends View
     @collection.on 'push', this.on_push
     @collection.on 'pop', this.on_pop
     @collection.on 'replace', this.on_replace
+    @collection.on 'clear', this.on_reset
     @dispatcher.on 'reset', this.on_reset
 
+  # This will unlink any active links in all visible situation views, except
+  # for the one at the top of the stack.
   unlink_all_but_last: ->
     _.forEach @collection.slice(0, @situations.length), (model) =>
       situation = @get_situation_from_model model
       situation.unlink()
 
+  # This will unlink any active links in all visible situation views.
   unlink_all: ->
     @collection.forEach (model) =>
       situation = @get_situation_from_model model
       situation.unlink()
 
+  # This will relink deactivated links in the situation view at the top of the
+  # stack.
   relink_latest: ->
     model = @collection.last()
     situation = @get_situation_from_model model
     situation.relink()
 
+  # This will rerenderthe situation view at the top of the stack.
   rerender_latest: ->
     model = @collection.last()
     situation = @get_situation_from_model model
     situation.render()
 
+  # Get the SituationView for the given Situation model. If one does not
+  # already exist, create one.
   get_situation_from_model: (model) ->
     if not @situations[model.cid]
       situation = new SituationView @options.get_options
         model: model
+        el: $ config.situation_template
       @situations[model.cid] = situation
 
     return @situations[model.cid]
 
+  # Run any before-enter handlers on the situation.
   run_before_entering: (situation) ->
     model = situation.model
     before = model.get('before_enter')
     if _.isFunction before
       before situation.options
+    @dispatcher.trigger 'before-enter', situation
 
+  # Run any after-enter handlers on the situation.
   run_after_entering: (situation) ->
     model = situation.model
     after = model.get('after_enter')
     if _.isFunction after
       after situation.options
+    @dispatcher.trigger 'after-enter', situation
 
+  # Run any before-exit handlers on the situation.
   run_before_exiting: (situation) ->
     model = situation.model
     before = model.get('before_exit')
     if _.isFunction before
       before situation.options
+    @dispatcher.trigger 'after-exit', situation
 
+  # Run any after-exit handlers on the situation.
   run_after_exiting: (situation) ->
     model = situation.model
     after = model.get('after_exit')
     if _.isFunction after
       after situation.options
+    @dispatcher.trigger 'after-exit', situation
 
+  # Deactivate all displayed situations.
   deactivate_all: ->
     @collection.forEach (model) =>
       situation = @get_situation_from_model model
       @deactivate_situation(situation)
 
+  # Deactivate the given situation view.
   deactivate_situation: (situation) ->
     @dispatcher.trigger 'deactivate:situation', situation
 
+  # Activate the given situation view.
   activate_situation: (situation) ->
     @dispatcher.trigger 'activate:situation', situation
 
+  # Activate the situation view at the top of the stack.
   reactivate_latest: ->
     model = @collection.last()
     situation = @get_situation_from_model model
     @activate_situation(situation)
 
+  # Trigger the visual addition of a situation view that has been hidden or newly added.
   show_situation: (situation) ->
-    duration = @options.show_animation_duration || 500
+    duration = config.base_animation_duration
     trigger = @dispatcher.blackboard.get('last-trigger')
     @dispatcher.trigger "show:situation", situation.$el, trigger
+    # We want to make sure that the situation is always revealed, even if no
+    # effect has been defined. Show the situation after the configured default
+    # animation duration, no matter what.
     _.delay((() -> situation.$el.show()), duration)
 
+  # Trigger the visual removal effect (if any) for a situation view. If no
+  # effect is defined, this will not do anything.
   remove_situation: (situation) ->
     trigger = @dispatcher.blackboard.get('last-trigger')
     @dispatcher.trigger "remove:situation", situation.$el, trigger
 
+  # Visually push a new situation onto the stack.
   push: (model, data) =>
     @deactivate_all()
     situation = @get_situation_from_model model
@@ -620,6 +766,7 @@ class SituationsView extends View
     @show_situation situation
     @run_after_entering situation
 
+  # Visually pop the top situation off the stack.
   pop: (model, data) =>
     if not _.isUndefined data
       reactivate = if _.isUndefined(data.reactivate) then true else false
@@ -633,29 +780,35 @@ class SituationsView extends View
     if reactivate
       @reactivate_latest()
 
+  # Stack event handlers
+  # --------------------
+  #
+  # Respond to a situation being pushed onto the stack.
   on_push: (model, data) =>
     @push model, data
 
+  # Respond to a situation replacing the top situation on the stack.
   on_replace: (popped, pushed, data) =>
     data.reactivate = false
     @pop popped, data
     @push pushed, data
 
+  # Respond to a situation being popped off the top of the stack.
   on_pop: (model, data) =>
     @pop model, data
 
+  # Respond to a complete reset of the stack.
   on_reset: () =>
     for cid, situation of @situations
       situation.remove()
     @situations = {}
 
 
-
 # Situation View
 # --------------
-
-# A Situation View handles a single Situation display.
-
+#
+# A Situation View handles the display of a single Situation.
+#
 class SituationView extends View
   tagName: "section"
   className: "situation center-block card card-hoverable"
@@ -668,67 +821,89 @@ class SituationView extends View
   get_context: (extra_context) ->
     context = _.extend(
       {},
-      @options.get_options(),
+      D.get_context(),
       @model.toJSON(),
-      {world: @options.world.attributes},
       extra_context)
-    @dispatcher.trigger 'set-template-context', context
     return context
+
+  render_markdown: (text) ->
+    return marked text, {renderer: D.markdown}
 
   render_template: (template, prepend) ->
     context = @get_context()
     result = template context
     if not _.isUndefined(prepend)
       result = "#{prepend}#{result}"
-    html = markdown result
+    html = @render_markdown result
     return $ html
 
   render: (prepend) ->
-    @body = $ '<div class="card-body">'
+    context = @get_context()
+    @$el.html ''
+    @$el.attr('id', @model.get('id'))
+
+    if @model.get('closeable')
+      $header = $ as_template(config.situation_header_template) context
+      @$el.append $header
+
+    @body = $ as_template(config.situation_body_template) context
     rendered = @render_template @model.template, prepend
 
+    # Process internal links to override default behavior
     rendered.find('a').not('.raw').each (idx, el) ->
       $el = $ el
       href = $el.attr('href')
       $el.data 'href', href
       $el.attr('href', 'javascript:void(0)')
+
+    # Raw links should open in a new tab or window
+    rendered.find('a.raw').each (idx, el) ->
+      $el = $ el
+      $el.attr('target', '_blank')
     @body.html(rendered)
-    @$el.html ''
     @$el.append @body
 
     choices = @model.get('choices')
     if choices
       if _.isFunction choices
         choices = choices()
-      $footer = $ '<footer class="card-footer">'
+      $footer = $ as_template(config.situation_footer_template) context
       @$el.append $footer
-      $choices = $ '<ul class="choices">'
+      $choices = $ as_template(config.situation_choices_template) context
+
+      choice_template = as_template config.situation_choice_template
 
       for text, directive of choices
-        text = as_template(text) @get_context()
+        text = as_template(text) context
         text = _.trimRight(text)
         if not _.isString directive
           id = directive.get('id')
           action = config.default_action
           directive = "#{action}!#{id}"
-        if _.endsWith text, '//'
-          prepend_newline = _.endsWith text, '///'
-          text = _.trimRight text, '/'
-          optional_p = /\[([^\]+])\](.+)$/
-          anchor_text = text.replace optional_p, '$2'
-          prepend_text = text.replace optional_p, '$1'
+        # If the choice text ends with /... or /...., prepend it to
+        # the next situation.
+        if text.match /\/(\.\.\.|…).?$/
+          # If the choice text ends with /.... (four dots), prepend it with a
+          # newline.
+          prepend_newline = text.match /\/(\.\.\.|…)\./
+          text = _.trimRight(_.trimRight(text, '.'), '/')
+          # If the text has [optional text] in square brackets, the optional
+          # text goes in the choice, and the text following that is prepended
+          # in the next situation.
+          optional_p = /^(.+?)\[(.*?)\](.*)$/
+          matched = text.match optional_p
+          if matched
+            prepend_text = matched[1] + matched[3]
+            anchor_text = matched[1] + matched[2]
+          else
+            prepend_text = anchor_text = text
         else
           anchor_text = text
           prepend_text = ''
           prepend_newline = false
-        html = markdown anchor_text
-        $choice = $ """
-          <li>
-            <a href="javascript:void(0)"
-               data-href="#{directive}">
-            #{html}
-            </a>
-          </li>"""
+        html = @render_markdown anchor_text
+        choice_context = _.extend {}, {directive: directive, html: html}, context
+        $choice = $ choice_template choice_context
         $a = $choice.find('a').first()
         # Rather than set the `data-` attributes in the template, we'll use Zepto
         # to set data on the DOM element directly, so we don't have to worry
@@ -759,10 +934,12 @@ class SituationView extends View
     else
       return false
 
-  handle_action: (event, $el) ->
+  handle_action: (event, data) ->
     actions = @model.get('actions')
     action = actions[event]
-    @write action($el)
+    result = action(data)
+    if _.isString result
+      @write result
 
   write: (text) ->
     @body.append @render_template as_template text
@@ -780,8 +957,11 @@ class SituationView extends View
         data.prepend_newline = $a.data('prepend-newline') or data.prepend_newline
         data.click = evt
         data.anchor = $a
+        data.from_view = this
+        data.from_model = @model
+
         if @is_action event
-          @handle_action event, $a
+          @handle_action event, data
           @dispatcher.trigger 'action', event, data
         else
           @dispatcher.trigger event, data
@@ -793,6 +973,7 @@ class SituationView extends View
       D.world.set(name, value)
       console.log $input.attr('name'), $input.val()
     ), 300)
+
   parse_directive: (text, directive) ->
     data = {event: event, text: text, directive: directive}
     if directive == '!'
@@ -802,6 +983,7 @@ class SituationView extends View
       else
         data.event = config.default_action
         data.target = text
+
     else if '!' in directive
       if _.startsWith directive, '!'
         # !event: Trigger the event named
@@ -809,6 +991,12 @@ class SituationView extends View
       else
         # action!arg: Call the action with the given argument
         [data.event, data.target] = directive.split '!', 2
+
+    else if directive == '-->'
+      data.event = config.default_action
+      index = D.situations.indexOf(@model)
+      data.target = D.situations.at(index + 1).get('id')
+
     else
       data.event = config.default_action
       data.target = directive
@@ -866,7 +1054,8 @@ class Dreamhorn
 
     seed = config.seed
     @world.set 'seed', seed
-    @chance = new Chance seed
+    @chance = new Chance(seed)
+    @rng = new Ring(seed)
     @roll = () =>
       return @chance.rpg.apply @chance, arguments
 
@@ -877,14 +1066,21 @@ class Dreamhorn
       begin_id = @options.begin_situation || 'begin'
       @push {target: begin_id}
 
+
+
     @dispatcher.on "replace", @replace
 
     @dispatcher.on "push", @push
 
     @dispatcher.on "pop", @pop
 
+    @dispatcher.on "drop", @drop
+
+    @dispatcher.on "clear", @clear
+
   config: config
   next: '-->'
+  markdown: new marked.Renderer()
 
   Model: Model
   Collection: Collection
@@ -915,7 +1111,7 @@ class Dreamhorn
       situation = @situations.at(index + 1)
       situation_id = situation.get('id')
     else
-      situation = @situations.get situation_id
+      situation = @situations.get situation_id.toLowerCase()
     if not situation
       throw new Error "No such situation #{situation_id}"
     seen = @seen[situation_id]
@@ -929,6 +1125,15 @@ class Dreamhorn
     @stack.trigger 'pop', situation, data
     return situation
 
+  drop: (data) =>
+    @stack.remove data.from_model
+    @stack.trigger 'pop', data.from_model, data
+
+  clear: (data) =>
+    @stack.reset()
+    @stack.trigger 'clear', data.from_model, data
+    @push(data)
+
   replace: (data) =>
     if _.isString(data)
       situation_id = data
@@ -936,10 +1141,22 @@ class Dreamhorn
     else
       situation_id = data.target
     popped = @stack.pop()
-    situation = @situations.get situation_id
+    situation = @situations.get situation_id.toLowerCase()
     @stack.push situation
     @stack.trigger 'replace', popped, situation, data
     return [popped, situation]
+
+  get_context: (extra_context) ->
+    options = @get_options()
+    context = _.extend(
+      {},
+      {
+        world: options.world.attributes
+        items: options.items
+      },
+      extra_context)
+    @dispatcher.trigger 'set-template-context', context
+    return context
 
   get_options: (suboptions) ->
     options =
@@ -963,7 +1180,9 @@ class Dreamhorn
           suboptions,
         )
 
-    return _.extend {}, @options, options, suboptions
+    options = _.extend {}, @options, options, suboptions
+    @dispatcher.trigger 'set-options', options
+    return options
 
   reset: =>
     @stack.reset []
@@ -1000,6 +1219,7 @@ D = module.exports = new Dreamhorn()
 # [collection-add]: http://backbonejs.org/#Collection-add
 # [effects]: ./effects.html
 # [fat-arrow]: http://coffeescript.org/#fat-arrow
+# [handlebars]: http://handlebarsjs.com/
 # [intro]: ./index.html
 # [main]: ./main.html
 # [jquery]: <http://jquery.com/>
@@ -1008,6 +1228,7 @@ D = module.exports = new Dreamhorn()
 # [markdown]: <http://daringfireball.net/projects/markdown/syntax>
 # [marked-options]: https://github.com/chjj/marked#usage
 # [models]: <http://backbonejs.org/#Model>
-# [templates]: https://lodash.com/docs#template
+# [_templates]: https://lodash.com/docs#template
 # [view-dom-event-handlers]: http://backbonejs.org/#View-delegateEvents
 # [views]: http://backbonejs.org/#View
+# [with-statement]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/with

@@ -60,14 +60,14 @@ D.situation 'cloak:rooms:cloakroom',
 D.situation 'cloak:rooms:bar',
   content: """
 
-  <% if (world['wearing cloak']) { %>
+  {{#if world.[wearing cloak]}}
 
   ## Darkness
 
   It is pitch dark, and you can't see a thing. You could
   [back out slowly](!) or [fumble around for a light](!).
 
-  <% } else { %>
+  {{else}}
 
   ## Foyer Bar
 
@@ -75,7 +75,7 @@ D.situation 'cloak:rooms:bar',
   the foyer to the north, is completely empty. There seems to be some
   sort of [message](!) scrawled in the sawdust on the floor.
 
-  <% } %>
+  {{/if}}
 
   """
   actions:
