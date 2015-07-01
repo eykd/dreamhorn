@@ -23,10 +23,6 @@ _ = require('lodash')
 #
 Backbone = require('backbone')
 
-# The [Chance.js][chance] library provides myriad useful randomization tools.
-#
-Chance = require('chance')
-
 # Our homegrown Ring library provides basic, extensible randomization tools.
 Ring = require('./ring/core')
 # We'll be registering one_of as a Handlebars template helper later.
@@ -975,10 +971,7 @@ class Dreamhorn
 
     seed = config.seed
     @world.set 'seed', seed
-    @chance = new Chance(seed)
     @rng = new Ring(seed)
-    @roll = () =>
-      return @chance.rpg.apply @chance, arguments
 
     @dispatcher.on "all", () =>
       console.log "Action dispatched:", arguments
@@ -1139,7 +1132,6 @@ Handlebars.registerHelper 'one_of', D.one_of
 
 # [backbone]: <http://backbonejs.org/>
 # [backbone-events]: http://backbonejs.org/#Events
-# [chance]: http://chancejs.com/
 # [coffee]: <http://coffeescript.org/>
 # [coffee-class]: <http://coffeescript.org/#classes>
 # [coffee-initialize]: <http://backbonejs.org/#Model-constructor>
