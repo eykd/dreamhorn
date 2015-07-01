@@ -14,6 +14,14 @@ D.situation 'cloak:begin',
 
   [Onward!](push!cloak:rooms:foyer)
 
+  <div class="row">
+  <p class="col-md-6 col-md-offset-6">
+    <small><em>Cloak of Darkness &copy; <a href="http://www.firthworks.com/roger/cloak/">Roger Firth</a>;
+    sloppily adapted by David Eyk.</em></small>
+  </p>
+  </div>
+
+
   """
 
 
