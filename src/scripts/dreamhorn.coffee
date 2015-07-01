@@ -29,6 +29,8 @@ Chance = require('chance')
 
 # Our homegrown Ring library provides basic, extensible randomization tools.
 Ring = require('./ring/core')
+# We'll be registering one_of as a Handlebars template helper later.
+require('./ring/one_of')
 
 # Our config library makes its reprise. We'll be needing it shortly.
 #
@@ -335,87 +337,6 @@ pronoun = (sex, male_pronoun, female_pronoun, otherwise) ->
 # templates:
 Handlebars.registerHelper 'pronoun', pronoun
 
-
-one_of_cache = {}
-
-# one_of
-# ------
-#
-# Work easily with a sequence of strings.
-one_of = () ->
-  sequence = Array.prototype.slice.call(arguments)
-
-  # If we've seen this sequence before, we want to use a cached version of our
-  # iterators to maintain state in between uses.
-  hash = md5(JSON.stringify(sequence))
-  obj = one_of_cache[hash]
-
-  if not obj
-    # Here we build the `one_of` object with its iterator functions. Each
-    # stores its state inside a closure.
-    obj = one_of_cache[hash] =
-      # Cycle through the sequence, returning each item in order and wrapping
-      # back to the beginning.
-      cycling: (() ->
-        cycler = sequence.slice()
-        i = -1
-        return () ->
-          i += 1
-          if i >= cycler.length
-            i = 0
-          return cycler[i]
-        )()
-
-      # Cycle through the sequence, returning each item in order until we reach
-      # the end of the sequence. Continue to return the last item forevermore
-      # after.
-      stopping: (() ->
-        cycler = sequence.slice()
-        i = -1
-        return () ->
-          i += 1
-          if i >= cycler.length
-            i = cycler.length - 1
-          return cycler[i]
-        )()
-
-      # Return a random item from the sequence. Crucially, it won't return the
-      # same item twice in a row.
-      randomly: (() ->
-        last_item = null
-        return () ->
-          item = last_item
-          while item == last_item
-            item = D.chance.pick sequence
-          last_item = item
-          return item
-        )()
-
-      # Return a random item from the sequence. May return the same item twice
-      # or more times in a row!
-      truly_at_random: (() ->
-        return () ->
-          return D.chance.pick sequence
-        )()
-
-      # Shuffle the sequence and iterate through, wrapping around to the
-      # beginning of the shuffled sequence.
-      in_random_order: (() ->
-        cycler = D.chance.shuffle sequence
-        i = -1
-        return () ->
-          i += 1
-          if i >= cycler.length
-            i = cycler.length - 1
-          return cycler[i]
-        )()
-
-  return obj
-
-
-# We'll also make `one_of` available as a helper inside of Handlebar
-# templates:
-Handlebars.registerHelper 'one_of', one_of
 
 
 # Situation
@@ -1208,6 +1129,13 @@ class Dreamhorn
 
 
 D = module.exports = new Dreamhorn()
+
+
+# We'll also make `one_of` available as a helper inside of Handlebar
+# templates:
+Handlebars.registerHelper 'one_of', D.one_of
+
+
 
 # [backbone]: <http://backbonejs.org/>
 # [backbone-events]: http://backbonejs.org/#Events
